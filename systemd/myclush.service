@@ -1,0 +1,13 @@
+[Unit]
+Description=myclush server for remote copy file and exec shell command 
+After=network.target setup.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/myclush -s
+StandardOutput=file:/var/log/myclush.log
+StandardError=file:/var/log/myclush.log
+ExecStop=/bin/kill -s TERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target
