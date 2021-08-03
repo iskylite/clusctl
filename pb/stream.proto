@@ -51,10 +51,10 @@ message Replay {
 // runcmd request
 message CmdReq {
     string cmd = 1;
-    int32 timeout = 2; 
-    string nodelist = 3;
-    int32 width = 4;
-    string port = 5;
+    // int32 timeout = 2; 
+    string nodelist = 2;
+    int32 width = 3;
+    string port = 4;
 }
 
 message GG {
@@ -67,7 +67,7 @@ message OoBwServerReq {
     string buffer = 2;
     int32 timeout = 3;
     int32 length = 4;
-    int32 loop = 5;
+    int32 count = 5;
 }
 
 // oo_bw_client 测试
@@ -78,7 +78,7 @@ message OoBwClientReq {
     int64 timer = 4;
     string port = 5;
     int32 length = 6;
-    int32 loop = 7;
+    int32 count = 7;
 }
 
 

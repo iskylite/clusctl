@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"math"
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
@@ -11,7 +10,6 @@ import (
 	"regexp"
 	"strconv"
 	"sync"
-	"time"
 
 	"google.golang.org/grpc"
 )
@@ -53,29 +51,28 @@ func (p *putStreamServer) RunOoBwClient(ctx context.Context, req *pb.OoBwClientR
 	defer cancel()
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go func(ctx context.Context, wg *sync.WaitGroup, length, loop int32) {
+	go func(ctx context.Context, wg *sync.WaitGroup, length, count int32) {
 		defer wg.Done()
 		replay, err := client.RunOoBwServer(ctx, &pb.OoBwServerReq{
-			Ncid:    localNcid,
-			Buffer:  req.Buffer,
-			Timeout: req.Timeout,
-			Length:  length,
-			Loop:    loop,
+			Ncid:   localNcid,
+			Buffer: req.Buffer,
+			Length: length,
+			Count:  count,
 		})
 		if err != nil {
 			log.Error(err)
 		} else {
 			log.Debugf("node %s server pass %t\n", replay.Nodelist, replay.Pass)
 		}
-	}(ctxs, &wg, req.Length, req.Loop)
+	}(ctxs, &wg, req.Length, req.Count)
 	// 启动定时器
 	log.Debugf("Timer To %s\n", utils.FormatTime(req.Timer))
 	// dateNanoUnix := utils.NewTimerAfterSeconds(req.Timer)
 	// file test
 	var cmdFile, args string
-	if req.Length != 0 && req.Loop != 0 {
+	if req.Length != 0 && req.Count != 0 {
 		cmdFile = "/usr/local/glex/examples/oo_bw_s_loop"
-		args = fmt.Sprintf("8 %s 8 %s %d %d", serverNcid, req.Buffer, req.Length, req.Loop)
+		args = fmt.Sprintf("8 %s 8 %s %d %d", serverNcid, req.Buffer, req.Length, req.Count)
 	} else {
 		cmdFile = "/usr/local/glex/examples/oo_bw_s"
 		args = fmt.Sprintf("8 %s 8 %s", serverNcid, req.Buffer)
@@ -90,12 +87,6 @@ func (p *putStreamServer) RunOoBwClient(ctx context.Context, req *pb.OoBwClientR
 	<-timer
 	log.Debugf("%s start on %s\n", execname, utils.LocalTime())
 	// 启动客户端RunOoBwClient
-	if req.Length == 0 || req.Loop == 0 {
-		var cancel1 context.CancelFunc
-		ctx, cancel1 = context.WithTimeout(ctx, utils.Timeout(int(req.Timeout)))
-		log.Debugf("%s set timeout %d\n", execname, req.Timeout)
-		defer cancel1()
-	}
 	command := fmt.Sprintf("%s %s", cmdFile, args)
 	out, err := utils.ExecuteShellCmdWithContext(ctx, command)
 	defer log.Debugf("%s finish on %s\n", execname, utils.LocalTime())
@@ -107,19 +98,14 @@ func (p *putStreamServer) RunOoBwClient(ctx context.Context, req *pb.OoBwClientR
 	return newReplay(true, string(out), localNode), nil
 }
 
-func RunOoBwClientService(ctx context.Context, server, node, buffer, port string, timeout int32, timer int64, results chan *pb.Replay, wg *sync.WaitGroup, oobwloop bool, length, loop int) {
+func RunOoBwClientService(ctx context.Context, server, node, buffer, port string, timer int64, results chan *pb.Replay, wg *sync.WaitGroup, oobwloop bool, length, count int) {
 	defer wg.Done()
 	addr := fmt.Sprintf("%s:%s", node, port)
 	if !oobwloop {
-		sumTimeout := time.Second * (time.Duration(timeout) + time.Duration(math.Ceil(time.Until(time.Unix(0, timer)).Seconds())))
-		log.Debugf("Total Timeout is %d\n", sumTimeout)
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, sumTimeout)
-		defer cancel()
 		length = 0
-		loop = 0
+		count = 0
 	}
-	log.Debugf("Length=%d, Loop=%d\n", length, loop)
+	log.Debugf("Length=%d, Loop=%d\n", length, count)
 	conn, err := grpc.DialContext(ctx, addr, grpc.WithBlock(), grpc.WithInsecure())
 	if err != nil {
 		results <- newReplay(false, err.Error(), node)
@@ -128,13 +114,12 @@ func RunOoBwClientService(ctx context.Context, server, node, buffer, port string
 	client := pb.NewRpcServiceClient(conn)
 	log.Debugf("oo_bw test start on %s -> %s\n", node, server)
 	replay, err := client.RunOoBwClient(ctx, &pb.OoBwClientReq{
-		Server:  server,
-		Buffer:  buffer,
-		Timeout: timeout,
-		Timer:   timer,
-		Port:    port,
-		Length:  int32(length),
-		Loop:    int32(loop),
+		Server: server,
+		Buffer: buffer,
+		Timer:  timer,
+		Port:   port,
+		Length: int32(length),
+		Count:  int32(count),
 	})
 	if err != nil {
 		results <- newReplay(false, err.Error(), node)

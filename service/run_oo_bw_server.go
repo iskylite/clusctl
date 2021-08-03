@@ -11,9 +11,9 @@ import (
 
 func (p *putStreamServer) RunOoBwServer(ctx context.Context, req *pb.OoBwServerReq) (*pb.Replay, error) {
 	var cmdFile, args string
-	if req.Length != 0 && req.Loop != 0 {
+	if req.Length != 0 && req.Count != 0 {
 		cmdFile = "/usr/local/glex/examples/oo_bw_r_loop"
-		args = fmt.Sprintf("8 %s 8 %s %d %d", req.Ncid, req.Buffer, req.Length, req.Loop)
+		args = fmt.Sprintf("8 %s 8 %s %d %d", req.Ncid, req.Buffer, req.Length, req.Count)
 	} else {
 		cmdFile = "/usr/local/glex/examples/oo_bw_r"
 		args = fmt.Sprintf("8 %s 8 %s", req.Ncid, req.Buffer)

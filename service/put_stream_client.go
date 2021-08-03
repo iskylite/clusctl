@@ -164,7 +164,7 @@ func (p *PutStreamClientService) RunServe(ctx context.Context, buffer int) error
 	p.uid = fi.Sys().(*syscall.Stat_t).Uid
 	p.gid = fi.Sys().(*syscall.Stat_t).Gid
 	cnt := 0
-	log.Debug("Client Stream Serve")
+	log.Debug("Client Stream Serve ... ")
 LOOP:
 	for {
 		select {
@@ -187,7 +187,7 @@ LOOP:
 				log.Error(err.Error())
 				return err
 			}
-			log.Debugf("Send Stream: cnt=[%d] md5=[%s]\n", cnt, utils.Md5sum(data))
+			log.Debugf("blockSize=[%d], cnt=[%d] md5=[%s]\n", buffer, cnt, utils.Md5sum(data))
 		}
 		cnt++
 	}

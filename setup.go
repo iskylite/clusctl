@@ -2,127 +2,34 @@ package main
 
 import (
 	"context"
-	"flag"
-	"fmt"
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/service"
 	"myclush/utils"
-	"runtime"
+	"strconv"
 	"sync"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-const (
-	VERSION string = "v1.4.0"
-	APP     string = "myclush"
-)
-
-const (
-	CLIENT = 1 << iota
-	SERVER
-	EXECUTE
-	PING
-	OO
-)
-
-var (
-	cc uint
-	ss uint
-	ee uint
-	pp uint
-	oo uint
-)
-
-var (
-	execute    string
-	client     string
-	dest       string
-	nodes      string
-	nnodes     string
-	port       string
-	buffer     int
-	debug      bool
-	server     bool
-	width      int
-	timeout    int
-	workers    int
-	ping       bool
-	list       bool
-	oobw       bool
-	oobwloop   bool
-	after      int64
-	oobwbuffer string
-	length     int
-	loop       int
-)
-
-func init() {
-	flag.BoolVar(&server, "s", false, "start myclush server service")
-	flag.StringVar(&client, "c", "", "start myclush client and copy file to remote server")
-	flag.IntVar(&buffer, "b", 1024*512, "buffersize bytes")
-	flag.BoolVar(&debug, "D", false, "debug log")
-	flag.StringVar(&nodes, "n", "", "nodes string")
-	flag.StringVar(&nnodes, "N", "", "dest nodes string")
-	flag.StringVar(&dest, "d", "/tmp", "destPath")
-	flag.StringVar(&port, "p", "1995", "grpc server port")
-	flag.IntVar(&width, "w", 2, "B tree width")
-	flag.StringVar(&execute, "e", "", "command string")
-	flag.IntVar(&timeout, "t", 3, "command execute timeout")
-	flag.BoolVar(&ping, "P", false, "start ping service")
-	flag.BoolVar(&oobw, "o", false, "start oo_bw service")
-	flag.BoolVar(&oobwloop, "O", false, "start oo_bw loop service")
-	flag.IntVar(&workers, "W", runtime.NumCPU(), "ping  workers max number")
-	flag.BoolVar(&list, "l", false, "sort cmd output by node list")
-	flag.Int64Var(&after, "a", 3, "oobw run after seconds")
-	flag.StringVar(&oobwbuffer, "B", "0x1000000", "oobw block size")
-	flag.IntVar(&length, "ln", 15, "oo_bw_loop offset length")
-	flag.IntVar(&loop, "lp", 100, "oo_bw_loop loop count")
-	flag.Usage = func() {
-		fmt.Printf("\nName: \t%s \nVersion: %s\n\nOptions:\n", APP, VERSION)
-		flag.PrintDefaults()
+func setLogLevel(debug bool) {
+	if debug {
+		log.SetLevel(log.DEBUG)
+		log.Debug("Logger Setup In DEBUG Mode")
+	} else {
+		log.SetSilent()
 	}
-	flag.Parse()
-	if client != "" {
-		cc = CLIENT
-		if !debug {
-			log.SetSilent()
-		}
-	}
-	if server {
-		ss = SERVER
-	}
-	if execute != "" {
-		ee = EXECUTE
-		if !debug {
-			log.SetSilent()
-		}
-	}
-	if ping {
-		pp = PING
-		if !debug {
-			log.SetSilent()
-		}
-	}
-	if oobw || oobwloop {
-		oo = OO
-		if !debug {
-			log.SetSilent()
-		}
-		if !oobwloop {
-			length = 0
-			loop = 0
-		}
-	}
-	log.SetColor()
 }
 
-func putStreamClientServiceSetup(ctx context.Context, cancel func()) {
-	log.Debugf("PutStreamClientService [%s] Start...\n", VERSION)
+func putStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, destDir, nodes, buffer string, port, width int) {
 	defer cancel()
-	clientService, err := service.NewPutStreamClientService(client, dest, nodes, port, int32(width))
+	bufferSize, err := utils.ConvertSize(buffer)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	clientService, err := service.NewPutStreamClientService(localFile, destDir, nodes, strconv.Itoa(port), int32(width))
 	if err != nil {
 		log.Errorf("PutStreamClientService Failed, err=[%s]\n", err.Error())
 		return
@@ -133,7 +40,7 @@ func putStreamClientServiceSetup(ctx context.Context, cancel func()) {
 			status.Code(err).String())
 		return
 	}
-	err = clientService.RunServe(ctx, buffer)
+	err = clientService.RunServe(ctx, bufferSize)
 	if err != nil {
 		log.Errorf("PutStreamClientService Failed, err=[%s], T=[%#s]\n", err.Error(), status.Code(err).String())
 		// 取消或者发送失败需要汇总错误信息
@@ -162,12 +69,11 @@ func putStreamClientServiceSetup(ctx context.Context, cancel func()) {
 	log.Debug("PutStreamClientService Stop")
 }
 
-func putStreamServerServiceSetup(ctx context.Context, cancel func()) {
-	serverService := service.NewPutStreamServerService(APP)
+func putStreamServerServiceSetup(ctx context.Context, cancel func(), tmpDir string, port int) {
+	serverService := service.NewPutStreamServerService(tmpDir)
 	go func() {
 		defer cancel()
-		log.Infof("PutStreamServerService [%s] Start ...\n", VERSION)
-		err := serverService.RunServer(port)
+		err := serverService.RunServer(strconv.Itoa(port))
 		if err != nil {
 			log.Errorf("PutStreamServerService Failed, err=[%s]\n", err.Error())
 			return
@@ -178,10 +84,9 @@ func putStreamServerServiceSetup(ctx context.Context, cancel func()) {
 	log.Info("PutStreamServerService Stop")
 }
 
-func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc) {
+func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cmd, nodes string, width, port int, list bool) {
 	defer cancel()
-	log.Debugf("RunCmdClientService [%s] start ...\n", VERSION)
-	client, err := service.NewRunCmdClientService(ctx, execute, nodes, port, int32(timeout))
+	client, err := service.NewRunCmdClientService(ctx, cmd, nodes, strconv.Itoa(port))
 	if err != nil {
 		log.Error(err)
 		return
@@ -202,8 +107,8 @@ func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc) {
 	}
 }
 
-func PingClientServiceSetup(ctx context.Context) {
-	pingClientService := service.NewPingClientService(nodes, port, workers)
+func PingClientServiceSetup(ctx context.Context, nodes string, port, workers, timeout int) {
+	pingClientService := service.NewPingClientService(nodes, strconv.Itoa(port), workers)
 	pingClientService.SetTimeout(timeout)
 	go pingClientService.Run(ctx)
 	idleNodes, downNodes := pingClientService.Gather()
@@ -214,7 +119,7 @@ func PingClientServiceSetup(ctx context.Context) {
 	}
 }
 
-func OoBwServiceSetup(ctx context.Context) {
+func OoBwServiceSetup(ctx context.Context, nodes, nnodes, oobwbuffer string, after int64, oobwloop bool, port, length, count int) {
 	cnodes := utils.ExpNodes(nodes)
 	cnode_len := len(cnodes)
 	snodes := utils.ExpNodes(nnodes)
@@ -228,7 +133,7 @@ func OoBwServiceSetup(ctx context.Context) {
 	timer := utils.NewTimerAfterSeconds(after)
 	wg.Add(cnode_len)
 	for index, node := range cnodes {
-		go service.RunOoBwClientService(ctx, snodes[index], node, oobwbuffer, port, int32(timeout), timer, results, &wg, oobwloop, length, loop)
+		go service.RunOoBwClientService(ctx, snodes[index], node, oobwbuffer, strconv.Itoa(port), timer, results, &wg, oobwloop, length, count)
 	}
 	wg.Wait()
 	close(results)
@@ -241,18 +146,18 @@ func OoBwServiceSetup(ctx context.Context) {
 			if replay.Pass {
 				avg, err := service.ParseOoBwResult(replay.Msg)
 				if err != nil {
-					log.Infof("[%s] %s\t%d\t%d\t%s\n", log.ColorWrapper("FAILED", log.Failed), replay.Nodelist, length, loop, avg)
+					log.Infof("[%s] %s\t%d\t%d\t%s\n", log.ColorWrapper("FAILED", log.Failed), replay.Nodelist, length, count, avg)
 					continue
 				}
-				log.Infof("[%s] %s\t%d\t%d\t%.2f\n", log.ColorWrapper("PASS", log.Success), replay.Nodelist, length, loop, avg)
+				log.Infof("[%s] %s\t%d\t%d\t%.2f\n", log.ColorWrapper("PASS", log.Success), replay.Nodelist, length, count, avg)
 				passAvgSum += avg
 				passCnt++
 				continue
 			}
-			log.Infof("[%s] %s\t%d\t%d\t%s\n", log.ColorWrapper("FAILED", log.Failed), replay.Nodelist, length, loop, replay.Msg)
+			log.Infof("[%s] %s\t%d\t%d\t%s\n", log.ColorWrapper("FAILED", log.Failed), replay.Nodelist, length, count, replay.Msg)
 		}
 
-		log.Infof("\n[%s] %d\t%d\t%d\t%.2f\n", log.ColorWrapper("PASS", log.Success), passCnt, transLength, loop, passAvgSum)
+		log.Infof("\n[%s] %d\t%d\t%d\t%.2f\n", log.ColorWrapper("PASS", log.Success), passCnt, transLength, count, passAvgSum)
 	} else {
 		for replay := range results {
 			if replay.Pass {

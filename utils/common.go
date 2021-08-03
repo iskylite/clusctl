@@ -4,6 +4,9 @@ import (
 	"crypto/md5"
 	"fmt"
 	"os"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-basic/uuid"
@@ -43,4 +46,29 @@ func UUID() string {
 
 func Timeout(timeout int) time.Duration {
 	return time.Second * time.Duration(timeout)
+}
+
+func ConvertSize(size string) (int, error) {
+	re := regexp.MustCompile(`^(\d+)([kKmM]?)$`)
+	matches := re.FindAllStringSubmatch(size, -1)
+	if len(matches) == 0 || len(matches[0]) != 3 {
+		return 0, fmt.Errorf("block size syntax error")
+	}
+	blockSizeStr := matches[0][1]
+	blockSize, err := strconv.Atoi(blockSizeStr)
+	if err != nil {
+		return 0, err
+	}
+	unit := strings.ToLower(matches[0][2])
+	switch unit {
+	case "m":
+		blockSize *= 1024 * 1024
+	case "k":
+		blockSize *= 1024
+	case "":
+
+	default:
+		return 0, fmt.Errorf("block size syntax error")
+	}
+	return blockSize, nil
 }

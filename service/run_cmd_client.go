@@ -13,24 +13,24 @@ import (
 type RunCmdClientService struct {
 	cmd      string
 	nodelist string
-	timeout  int32
 	port     string
 	client   pb.RpcServiceClient
 	ctx      context.Context
 }
 
-func NewRunCmdClientService(ctx context.Context, cmd, nodelist, port string, timeout int32) (*RunCmdClientService, error) {
+func NewRunCmdClientService(ctx context.Context, cmd, nodelist, port string) (*RunCmdClientService, error) {
 	nodes := utils.ExpNodes(nodelist)
-	return newRunCmdClientService(ctx, cmd, port, nodes, timeout)
+	return newRunCmdClientService(ctx, cmd, port, nodes)
 }
 
-func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []string, timeout int32) (*RunCmdClientService, error) {
+func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []string) (*RunCmdClientService, error) {
 	batchNode := nodes[0]
 	allocNodelist := ""
 	if len(nodes) > 1 {
 		allocNodelist = utils.ConvertNodelist(nodes[1:])
 	}
 	addr := fmt.Sprintf("%s:%s", batchNode, port)
+	// grpc 最大传输数据大小 每个子节点传输3M大小*总节点数
 	grpcOptions := grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024 * 1024 * 3 * len(nodes)))
 	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpcOptions)
 	if err != nil {
@@ -42,7 +42,6 @@ func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []strin
 	log.Debugf("Connect Server [%s]\n", addr)
 	return &RunCmdClientService{
 		cmd:      cmd,
-		timeout:  timeout,
 		client:   client,
 		nodelist: allocNodelist,
 		ctx:      ctx,
@@ -51,7 +50,7 @@ func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []strin
 }
 
 func (r *RunCmdClientService) RunCmd(width int32) ([]*pb.Replay, error) {
-	req := &pb.CmdReq{Cmd: r.cmd, Timeout: r.timeout, Nodelist: r.nodelist, Width: width, Port: r.port}
+	req := &pb.CmdReq{Cmd: r.cmd, Nodelist: r.nodelist, Width: width, Port: r.port}
 	log.Debugf("Command [%s] Start ...\n", r.cmd)
 	resp, err := r.client.RunCmd(r.ctx, req)
 	if err != nil {

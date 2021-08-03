@@ -17,23 +17,10 @@ func (p *putStreamServer) RunCmd(ctx context.Context, req *pb.CmdReq) (*pb.PutSt
 	log.Debugf("Result Channel Length Is %d\n", replayBufferSize)
 	var wg sync.WaitGroup
 	wg.Add(replayBufferSize)
-	// run local cmd
-	// cmd := utils.NewCommandWithContext(ctx, req.Cmd, int(req.GetTimeout()))
-	// cmd := utils.NewCommand(req.Cmd, int(req.GetTimeout()))
-	// log.Debugf("Command=[%s], Timeout=[%d]\n", req.Cmd, req.GetTimeout())
-	// go cmd.Execute()
-	// go func(wg *sync.WaitGroup) {
-	// 	output, ok := cmd.GetResult()
-	// 	log.Debugf("Local Command Output=[%s], OK=[%t]\n", output, ok)
-	// 	replayChan <- []*pb.Replay{newReplay(ok, output, utils.Hostname())}
-	// 	wg.Done()
-	// }(&wg)
 	go func(wg *sync.WaitGroup, ctx context.Context) {
-		log.Debugf("Start Command=%s, Timeout=%d\n", req.Cmd, req.GetTimeout())
+		log.Debugf("Start Command=%s\n", req.Cmd)
 		defer wg.Done()
-		ctx1, cancel := context.WithTimeout(ctx, utils.Timeout(int(req.Timeout)))
-		defer cancel()
-		out, err := utils.ExecuteShellCmdWithContext(ctx1, req.Cmd)
+		out, err := utils.ExecuteShellCmdWithContext(ctx, req.Cmd)
 		if err != nil {
 			log.Error(err)
 			replayChan <- []*pb.Replay{newReplay(false, err.Error(), utils.Hostname())}
@@ -53,7 +40,7 @@ func (p *putStreamServer) RunCmd(ctx context.Context, req *pb.CmdReq) (*pb.PutSt
 				return
 			}
 			log.Debugf("Create RunCmdClientService For [%s]\n", nodes[0])
-			client, err := newRunCmdClientService(ctx, req.Cmd, req.Port, nodes, req.Timeout)
+			client, err := newRunCmdClientService(ctx, req.Cmd, req.Port, nodes)
 			if err != nil {
 				replayChan <- []*pb.Replay{newReplay(false, err.Error(), utils.ConvertNodelist(nodes))}
 				return
