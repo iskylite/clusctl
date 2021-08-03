@@ -4,25 +4,12 @@ proto:
 	protoc -I ./pb/ --go_out=plugins=grpc:. ./pb/stream.proto
 
 build:
-	go build -o ${APP}
+	go build -o cmd/${APP}-x64
 
 arm:
-	GOOS=linux GOARCH=arm64 go build -o ${APP}
-
-install:
-	cp ${APP} /usr/local/sbin
-	cp systemd/${APP}.service /usr/lib/systemd/system/${APP}.service
-
-service:
-	cp -r systemd/${APP}.service /usr/lib/systemd/system/${APP}.service
+	GOOS=linux GOARCH=arm64 go build -o cmd/${APP}-arm64
 
 clean:
-	rm -rf ${APP}
-	rm -rf /usr/local/sbin/${APP}
-	rm -rf /usr/lib/systemd/system/${APP}.service
+	rm -rf cmd/${APP}-x64
+	rm -rf cmd/${APP}-arm64
 
-pkg-arm64:
-	tar -jcf ${APP}_aarch64.tar.bz2 /usr/local/sbin/${APP} /usr/lib/systemd/system/${APP}.service
-
-pkg:
-	tar -jcf ${APP}_x64.tar.bz2 /usr/local/sbin/${APP} /usr/lib/systemd/system/${APP}.service

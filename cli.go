@@ -12,7 +12,6 @@ import (
 
 // 全局基本配置
 var (
-	name         string = "yhclush"
 	version      string = "v1.4.1"
 	author       string = "iskylite"
 	email        string = "yantao0905@outlook.com"
@@ -257,9 +256,9 @@ var (
 func run(ctx context.Context, cancel context.CancelFunc) error {
 	app := &cli.App{
 		// 基本信息
-		Name:     name,
-		HelpName: name,
-		Version:  version,
+		// Name:     name,
+		// HelpName: name,
+		Version: version,
 		// Description: descriptions,
 		Usage: descriptions,
 		// 子命令执行前的设置
