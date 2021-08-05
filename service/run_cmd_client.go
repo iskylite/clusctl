@@ -7,7 +7,6 @@ import (
 	"myclush/pb"
 	"myclush/utils"
 	"strconv"
-	"time"
 
 	"google.golang.org/grpc"
 )
@@ -34,8 +33,8 @@ func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []strin
 	addr := fmt.Sprintf("%s:%s", batchNode, port)
 	// grpc 最大传输数据大小 每个子节点传输3M大小*总节点数
 	grpcOptions := grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024 * 1024 * 3 * len(nodes)))
-	ctx, _ = context.WithTimeout(ctx, time.Second)
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithBlock(), grpcOptions)
+	// ctx, _ = context.WithTimeout(ctx, time.Second)
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpcOptions)
 	if err != nil {
 		return nil, utils.GrpcErrorWrapper(err)
 	}

@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
-	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
@@ -110,8 +109,8 @@ func (p *PutStreamClientService) GetStream() pb.RpcService_PutStreamClient {
 func (p *PutStreamClientService) GenStreamWithContext(ctx context.Context) error {
 	addr := fmt.Sprintf("%s:%s", p.node, p.port)
 	// conn, err := grpc.Dial(addr, grpc.WithInsecure())
-	ctx1, _ := context.WithTimeout(context.Background(), time.Second*1)
-	conn, err := grpc.DialContext(ctx1, addr, grpc.WithBlock(), grpc.WithInsecure())
+	// ctx1, _ := context.WithTimeout(context.Background(), time.Second*1)
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
 	if err != nil {
 		return utils.GrpcErrorWrapper(err)
 	}
