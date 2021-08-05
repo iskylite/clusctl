@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	log "myclush/logger"
 	"myclush/pb"
@@ -25,12 +26,11 @@ func (p *putStreamServer) RunOoBwServer(ctx context.Context, req *pb.OoBwServerR
 	execname := filepath.Base(cmdFile)
 	command := fmt.Sprintf("%s %s", cmdFile, args)
 	log.Debugf("%s start on %s\n", execname, utils.LocalTime())
-	out, err := utils.ExecuteShellCmdWithContext(ctx, command)
+	out, ok := utils.ExecuteShellCmdWithContext(ctx, command)
 	defer log.Debugf("%s finish on %s\n", execname, utils.LocalTime())
-	if err != nil {
-		log.Error(err)
+	if !ok {
 		log.Error(out)
-		return nil, err
+		return nil, errors.New(out)
 	}
 	return newReplay(true, string(out), utils.Hostname()), nil
 }

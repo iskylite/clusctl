@@ -189,42 +189,36 @@ func ConvertNodelist(nodelist []string) string {
 			} else {
 				if start != end {
 					nodes = fmt.Sprintf("%s-%s,%s", nodes, end, lcntStr)
-					start, end = lcntStr, lcntStr
 				} else {
 					nodes = fmt.Sprintf("%s,%s", nodes, lcntStr)
-					start, end = lcntStr, lcntStr
 				}
+				start, end = lcntStr, lcntStr
 			}
 		} else {
 			prefix = lprefix
 			if start != end {
 				nodes = fmt.Sprintf("%s-%s],%s[%s", nodes, end, prefix, lcntStr)
-				start, end = lcntStr, lcntStr
 			} else {
-				nodes = fmt.Sprintf("%s],%s[%s", nodes, prefix, lcntStr)
-				start, end = lcntStr, lcntStr
+				suffixStr := fmt.Sprintf("[%s", start)
+				if strings.HasSuffix(nodes, suffixStr) {
+					nodes = fmt.Sprintf("%s%s,%s[%s", strings.TrimSuffix(nodes, suffixStr), start, prefix, lcntStr)
+				} else {
+					nodes = fmt.Sprintf("%s],%s[%s", nodes, prefix, lcntStr)
+				}
 			}
+			start, end = lcntStr, lcntStr
 		}
 	}
 	if start == end {
-		if strings.HasSuffix(nodes, "[") {
-			nodes = fmt.Sprintf("%s%s]", nodes, end)
+		suffixStr := fmt.Sprintf("[%s", start)
+		if strings.HasSuffix(nodes, suffixStr) {
+			nodes = fmt.Sprintf("%s%s", strings.TrimSuffix(nodes, suffixStr), start)
 		} else {
 			nodes = fmt.Sprintf("%s]", nodes)
 		}
 	} else {
 		nodes = fmt.Sprintf("%s-%s]", nodes, end)
 	}
-	nodesSplit := strings.Split(nodes, ",")
-	re := regexp.MustCompile(`^([a-zA-Z]+)\[([0-9]+)\]$`)
-	for index, val := range nodesSplit {
-		matches := re.FindAllStringSubmatch(val, -1)
-		// fmt.Println(matches)
-		if len(matches) > 0 {
-			nodesSplit[index] = fmt.Sprintf("%s%s", matches[0][1], matches[0][2])
-		}
-	}
-	nodes = strings.Join(nodesSplit, ",")
 	return nodes
 }
 

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	log "myclush/logger"
 	"myclush/pb"
@@ -88,11 +89,11 @@ func (p *putStreamServer) RunOoBwClient(ctx context.Context, req *pb.OoBwClientR
 	log.Debugf("%s start on %s\n", execname, utils.LocalTime())
 	// 启动客户端RunOoBwClient
 	command := fmt.Sprintf("%s %s", cmdFile, args)
-	out, err := utils.ExecuteShellCmdWithContext(ctx, command)
+	out, ok := utils.ExecuteShellCmdWithContext(ctx, command)
 	defer log.Debugf("%s finish on %s\n", execname, utils.LocalTime())
-	if err != nil {
-		log.Error(err)
-		return empty, err
+	if !ok {
+		log.Error(out)
+		return empty, errors.New(out)
 	}
 	wg.Wait()
 	return newReplay(true, string(out), localNode), nil
@@ -108,7 +109,7 @@ func RunOoBwClientService(ctx context.Context, server, node, buffer, port string
 	log.Debugf("Length=%d, Loop=%d\n", length, count)
 	conn, err := grpc.DialContext(ctx, addr, grpc.WithBlock(), grpc.WithInsecure())
 	if err != nil {
-		results <- newReplay(false, err.Error(), node)
+		results <- newReplay(false, utils.GrpcErrorMsg(err), node)
 		return
 	}
 	client := pb.NewRpcServiceClient(conn)
@@ -122,7 +123,7 @@ func RunOoBwClientService(ctx context.Context, server, node, buffer, port string
 		Count:  int32(count),
 	})
 	if err != nil {
-		results <- newReplay(false, err.Error(), node)
+		results <- newReplay(false, utils.GrpcErrorMsg(err), node)
 		return
 	}
 	results <- replay
@@ -144,4 +145,55 @@ func ParseOoBwResult(result string) (float32, error) {
 		avg += float32(write)
 	}
 	return avg / float32(cnts), nil
+}
+
+func OoBwServiceSetup(ctx context.Context, nodes, nnodes, oobwbuffer string, after int64, oobwloop bool, port, length, count int) {
+	cnodes := utils.ExpNodes(nodes)
+	cnode_len := len(cnodes)
+	snodes := utils.ExpNodes(nnodes)
+	snode_len := len(snodes)
+	if cnode_len != snode_len {
+		log.Error("client nodes num not equal server nodes num")
+		return
+	}
+	results := make(chan *pb.Replay, cnode_len)
+	var wg sync.WaitGroup
+	timer := utils.NewTimerAfterSeconds(after)
+	wg.Add(cnode_len)
+	for index, node := range cnodes {
+		go RunOoBwClientService(ctx, snodes[index], node, oobwbuffer, strconv.Itoa(port), timer, results, &wg, oobwloop, length, count)
+	}
+	wg.Wait()
+	close(results)
+	if oobwloop {
+		var passAvgSum float32
+		var passCnt int
+		transLength := 8 << length
+		log.Infof("[State] Nodes\tOffset\tLoop\tAvgBw(MB/s)\n")
+		for replay := range results {
+			if replay.Pass {
+				avg, err := ParseOoBwResult(replay.Msg)
+				if err != nil {
+					log.Infof("[%s] %s\t%d\t%d\t%s\n", log.ColorWrapper("FAILED", log.Failed), replay.Nodelist, length, count, avg)
+					continue
+				}
+				log.Infof("[%s] %s\t%d\t%d\t%.2f\n", log.ColorWrapper("PASS", log.Success), replay.Nodelist, length, count, avg)
+				passAvgSum += avg
+				passCnt++
+				continue
+			}
+			log.Infof("[%s] %s\t%d\t%d\t%s\n", log.ColorWrapper("FAILED", log.Failed), replay.Nodelist, length, count, replay.Msg)
+		}
+
+		log.Infof("\n[%s] %d\t%d\t%d\t%.2f\n", log.ColorWrapper("PASS", log.Success), passCnt, transLength, count, passAvgSum)
+	} else {
+		for replay := range results {
+			if replay.Pass {
+				log.Infof("[%s] %s\n%s\n", log.ColorWrapper("PASS", log.Success), replay.Nodelist, replay.Msg)
+				continue
+			}
+			log.Infof("[%s] %s\n%s\n", log.ColorWrapper("FAILED", log.Failed), replay.Nodelist, replay.Msg)
+		}
+	}
+
 }

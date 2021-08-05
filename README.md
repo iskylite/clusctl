@@ -1,14 +1,14 @@
 # myclush
 
-类似于slurm的多节点数据传输和命令执行（待定）
+类似于 slurm 的多节点数据传输和命令执行（待定）
 
 # 初始化环境
 
 ```shell
-$ go mod tidy
+go mod tidy
 ```
 
-安装protoc，请自行下载，解压后将protoc文件目录添加到系统环境变量PATH中。
+安装 protoc，请自行下载，解压后将 protoc 文件目录添加到系统环境变量 PATH 中。
 
 # 编译
 
@@ -26,12 +26,12 @@ $ make arm
 $ make service
 ```
 
-service也可自行配置。模板如下：
+service 也可自行配置。模板如下：
 
 ```shell
 # /usr/lib/systemd/system/myclush.service
 [Unit]
-Description=myclush server for remote copy file and exec shell command 
+Description=myclush server for remote copy file and exec shell command
 After=network.target setup.service
 
 [Service]
@@ -50,8 +50,8 @@ WantedBy=multi-user.target
 ## 命令行参数
 
 ```shell
-$ ./myclush 
-  -D    debug log 
+$ ./myclush
+  -D    debug log
   -P    start ping service
   -W int
         ping  workers max number (default 16)
@@ -76,7 +76,6 @@ $ ./myclush
 
 ```
 
-
 ## 服务端
 
 服务端安装在计算节点。
@@ -92,7 +91,6 @@ $ myclush -s
 # 调试模式
 $ myclush -s -d
 ```
-
 
 ## 客户端
 
@@ -111,20 +109,18 @@ PASS: cn[0-3,5-9,12-71,74-81,84-125,128-243], SUM: 235
 
 测试结果：
 
-235个计算节点，传输文件大小6GB。目前服务端缓冲数量暂时不可修改。
+235 个计算节点，传输文件大小 6GB。目前服务端缓冲数量暂时不可修改。
 
-- **树宽为2，传输大小为512KB，服务端传输缓冲数量为64，单点接收速度为160MB/s, 单点发送速度为320MB/s， 共用时41s**
-  
-- **树宽为2，传输大小为512KB，服务端传输缓冲数量为0，单点接收速度为60MB/s, 单点发送速度为120MB/s， 共用时1m30s**
+- **树宽为 2，传输大小为 512KB，服务端传输缓冲数量为 64，单点接收速度为 160MB/s, 单点发送速度为 320MB/s， 共用时 41s**
+- **树宽为 2，传输大小为 512KB，服务端传输缓冲数量为 0，单点接收速度为 60MB/s, 单点发送速度为 120MB/s， 共用时 1m30s**
 
-- **树宽为2，传输大小为512KB，服务端传输缓冲数量为128，单点接收速度为160MB/s, 单点发送速度为320MB/s， 共用时42s**
+- **树宽为 2，传输大小为 512KB，服务端传输缓冲数量为 128，单点接收速度为 160MB/s, 单点发送速度为 320MB/s， 共用时 42s**
 
-- **树宽为16，传输大小为512KB，服务端传输缓冲数量为64，单点接收速度为60MB/s, 单点发送速度为900MB/s， 共用时1m52s**
+- **树宽为 16，传输大小为 512KB，服务端传输缓冲数量为 64，单点接收速度为 60MB/s, 单点发送速度为 900MB/s， 共用时 1m52s**
 
-- **树宽为2，传输大小为820KB，服务端传输缓冲数量为64，单点接收速度为160MB/s, 单点发送速度为320MB/s， 共用时42s**
+- **树宽为 2，传输大小为 820KB，服务端传输缓冲数量为 64，单点接收速度为 160MB/s, 单点发送速度为 320MB/s， 共用时 42s**
 
-- **树宽为2，传输大小为1MB，服务端传输缓冲数量为64，单点接收速度为160MB/s, 单点发送速度为320MB/s， 共用时41s**
-
+- **树宽为 2，传输大小为 1MB，服务端传输缓冲数量为 64，单点接收速度为 160MB/s, 单点发送速度为 320MB/s， 共用时 41s**
 
 总结：
 
@@ -171,17 +167,18 @@ PASS: cn[0-3,5-9,12-71,74-81,84-125,128-243], SUM: 235
 
 ### FAQ
 
-- GRPC调试日志
+- GRPC 调试日志
 
 需要设置环境变量
+
 ```shell
-export GRPC_GO_LOG_SEVERITY_LEVEL="info" 
+export GRPC_GO_LOG_SEVERITY_LEVEL="info"
 export GRPC_GO_LOG_VERBOSITY_LEVEL=2
 ```
 
-- 执行命令有正确输出但是仍然显示failed
+- 执行命令有正确输出但是仍然显示 failed
 
-部分命令执行过程中有报错信息，故仍会显示failed，如下为df命令的示例：
+部分命令执行过程中有报错信息，故仍会显示 failed，如下为 df 命令的示例：
 
 ```shell
 
@@ -203,5 +200,19 @@ FAILED: cn[8,20,30,40], SUM: 4
 
 - 默认值
 
-默认树宽为2，即二叉树
-默认传输大小为512KB
+默认树宽为 2，即二叉树
+默认传输大小为 512KB
+
+## TODO
+
+1、可以重用 client
+
+```shell
+grpcOptions := grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024 * 1024 * 3 * len(nodes)))
+ conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpcOptions)
+ if err != nil {
+  return nil, utils.GrpcErrorWrapper(err)
+ }
+ log.Debugf("Dial Server %s\n", addr)
+ client := pb.NewRpcServiceClient(conn)
+```

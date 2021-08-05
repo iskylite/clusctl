@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	log "myclush/logger"
 	"myclush/pb"
@@ -26,9 +27,9 @@ func getLocalNcidWithContext(ctx context.Context) (string, error) {
 	if !utils.Isfile("/usr/local/glex/utils/zni_read_reg") {
 		return "", fmt.Errorf("/usr/local/glex/utils/zni_read_reg not exist")
 	}
-	out, err := utils.ExecuteShellCmdWithContext(ctx, "/usr/local/glex/utils/zni_read_reg -r 0x800")
-	if err != nil {
-		return "", err
+	out, ok := utils.ExecuteShellCmdWithContext(ctx, "/usr/local/glex/utils/zni_read_reg -r 0x800")
+	if !ok {
+		return "", errors.New(out)
 	}
 	re := regexp.MustCompile(`.*RM_LOCAL_ID\(0x800\)\s+=\s+(0x\w+).*`)
 	matches := re.FindAllStringSubmatch(string(out), -1)

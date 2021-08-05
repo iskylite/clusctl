@@ -1,4 +1,4 @@
-APP="myclush"
+APP = myclush
 
 proto:
 	protoc -I ./pb/ --go_out=plugins=grpc:. ./pb/stream.proto

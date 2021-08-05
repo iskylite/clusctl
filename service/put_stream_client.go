@@ -9,9 +9,12 @@ import (
 	"myclush/utils"
 	"os"
 	"path/filepath"
+	"strconv"
 	"syscall"
+	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 )
 
 type PutStreamClientService struct {
@@ -106,20 +109,17 @@ func (p *PutStreamClientService) GetStream() pb.RpcService_PutStreamClient {
 
 func (p *PutStreamClientService) GenStreamWithContext(ctx context.Context) error {
 	addr := fmt.Sprintf("%s:%s", p.node, p.port)
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
-	// ctx1, cel := context.WithTimeout(context.Background(), time.Second*3)
-	// defer cel()
-	// conn, err := grpc.DialContext(ctx1, addr, grpc.WithBlock(), grpc.WithInsecure())
+	// conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	ctx1, _ := context.WithTimeout(context.Background(), time.Second*1)
+	conn, err := grpc.DialContext(ctx1, addr, grpc.WithBlock(), grpc.WithInsecure())
 	if err != nil {
-		log.Error(err.Error())
-		return err
+		return utils.GrpcErrorWrapper(err)
 	}
 	log.Debugf("Dial Server [%s]\n", addr)
 	client := pb.NewRpcServiceClient(conn)
 	stream, err := client.PutStream(ctx)
 	if err != nil {
-		log.Error(err.Error())
-		return err
+		return utils.GrpcErrorWrapper(err)
 	}
 
 	log.Debugf("Connect Server [%s]\n", addr)
@@ -147,7 +147,7 @@ func (p *PutStreamClientService) Send(data []byte) error {
 
 func (p *PutStreamClientService) CloseAndRecv() (*pb.PutStreamResp, error) {
 	replay, err := p.stream.CloseAndRecv()
-	return replay, err
+	return replay, utils.GrpcErrorWrapper(err)
 }
 
 func (p *PutStreamClientService) RunServe(ctx context.Context, buffer int) error {
@@ -184,7 +184,6 @@ LOOP:
 			data := bufferBytes[:buffer]
 			err = p.Send(data)
 			if err != nil {
-				log.Error(err.Error())
 				return err
 			}
 			log.Debugf("blockSize=[%d], cnt=[%d] md5=[%s]\n", buffer, cnt, utils.Md5sum(data))
@@ -194,23 +193,41 @@ LOOP:
 	return nil
 }
 
-func (p *PutStreamClientService) Gather(replay []*pb.Replay) (idleNodes, downNodes, cancelNodes []string) {
-	idleNodes = make([]string, 0)
-	downNodes = make([]string, 0)
-	cancelNodes = make([]string, 0)
-	for _, rep := range replay {
-		nodelist := utils.ExpNodes(rep.Nodelist)
-		if rep.Pass {
-			idleNodes = append(idleNodes, nodelist...)
-		} else {
-			if rep.Msg == "canceled" {
-				cancelNodes = append(cancelNodes, nodelist...)
-				log.Debugf("nodelist=%s, error=canceled\n", rep.Nodelist)
-			} else {
-				downNodes = append(downNodes, nodelist...)
-				log.Debugf("nodelist=%s, error=%s\n", rep.Nodelist, rep.Msg)
-			}
-		}
+func (p *PutStreamClientService) Gather(replay []*pb.Replay) {
+	gather(replay)
+}
+
+func PutStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, destDir, nodes, buffer string, port, width int) {
+	defer cancel()
+	bufferSize, err := utils.ConvertSize(buffer)
+	if err != nil {
+		log.Error(err)
+		return
 	}
-	return
+	clientService, err := NewPutStreamClientService(localFile, destDir, nodes, strconv.Itoa(port), int32(width))
+	if err != nil {
+		log.Errorf("PutStreamClientService Failed, err=[%s]\n", err.Error())
+		return
+	}
+	err = clientService.GenStreamWithContext(ctx)
+	if err != nil {
+		log.Errorf("PutStreamClientService Failed, err=[%s]\n",
+			status.Code(err).String())
+		return
+	}
+	err = clientService.RunServe(ctx, bufferSize)
+	if err != nil {
+		log.Errorf("PutStreamClientService Failed, err=[%s], T=[%#s]\n", err.Error(), utils.GrpcErrorMsg(err))
+		// 取消或者发送失败需要汇总错误信息
+		// return
+	}
+	log.Debug("PutStreamClientService Start Recv All Replay...")
+	replays, err := clientService.CloseAndRecv()
+	if err != nil {
+		log.Errorf("PutStreamClientService Failed, err=[%s]\n", err.Error())
+		return
+	}
+
+	clientService.Gather(replays.Replay)
+	log.Debug("PutStreamClientService Stop")
 }

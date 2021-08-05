@@ -8,6 +8,7 @@ import (
 	"myclush/utils"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -189,4 +190,19 @@ LOOP:
 	}
 	cancel()
 	return stream.SendAndClose(&pb.PutStreamResp{Replay: resps})
+}
+
+func PutStreamServerServiceSetup(ctx context.Context, cancel func(), tmpDir string, port int) {
+	serverService := NewPutStreamServerService(tmpDir)
+	go func() {
+		defer cancel()
+		err := serverService.RunServer(strconv.Itoa(port))
+		if err != nil {
+			log.Errorf("PutStreamServerService Failed, err=[%s]\n", utils.GrpcErrorMsg(err))
+			return
+		}
+	}()
+	<-ctx.Done()
+	serverService.Stop()
+	log.Info("PutStreamServerService Stop")
 }

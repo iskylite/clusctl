@@ -3,10 +3,13 @@ package utils
 import (
 	"crypto/md5"
 	"fmt"
+	"myclush/pb"
 	"os"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-basic/uuid"
@@ -71,4 +74,42 @@ func ConvertSize(size string) (int, error) {
 		return 0, fmt.Errorf("block size syntax error")
 	}
 	return blockSize, nil
+}
+
+func DataAggregation(replay []*pb.Replay) (sync.Map, sync.Map) {
+	dataPassMap := sync.Map{}
+	dataFailMap := sync.Map{}
+	replayChan := make(chan *pb.Replay, runtime.NumCPU())
+	go func() {
+		defer close(replayChan)
+		for _, r := range replay {
+			replayChan <- r
+		}
+	}()
+	for r := range replayChan {
+		if r.Pass {
+			nodes, ok := dataPassMap.Load(r.Msg)
+			if ok {
+				nodes, ok := (nodes).([]string)
+				if !ok {
+					dataPassMap.Store(r.Msg, ExpNodes(r.Nodelist))
+				}
+				dataPassMap.Store(r.Msg, append(nodes, ExpNodes(r.Nodelist)...))
+			} else {
+				dataPassMap.Store(r.Msg, ExpNodes(r.Nodelist))
+			}
+		} else {
+			nodes, ok := dataFailMap.Load(r.Msg)
+			if ok {
+				nodes, ok := (nodes).([]string)
+				if !ok {
+					dataFailMap.Store(r.Msg, ExpNodes(r.Nodelist))
+				}
+				dataFailMap.Store(r.Msg, append(nodes, ExpNodes(r.Nodelist)...))
+			} else {
+				dataFailMap.Store(r.Msg, ExpNodes(r.Nodelist))
+			}
+		}
+	}
+	return dataPassMap, dataFailMap
 }

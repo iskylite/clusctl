@@ -6,7 +6,7 @@ import (
 )
 
 func TestConvertNodelist(t *testing.T) {
-	nodelist := []string{"pan0", "cn0", "cn2", "cn3", "cn4", "cn10", "vm0", "vm1"}
+	nodelist := []string{"pan0", "cn0", "cn2", "cn3", "cn4", "cn10", "vm0", "vm2", "WSL"}
 	// nodelist := []string{"cn9", "vm0", "vm1", "pan0"}
 	t.Log(ConvertNodelist(nodelist))
 }
@@ -19,7 +19,6 @@ func TestSplitNodesByWidth(t *testing.T) {
 		t.Log(ConvertNodelist(node))
 	}
 }
-
 
 func TestMySort(t *testing.T) {
 	nodelist := []string{"pan0", "cn0", "vn1", "cn2", "cn3", "pan1", "cn4", "cn10", "vm0", "vm1"}

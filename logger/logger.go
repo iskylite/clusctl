@@ -193,3 +193,9 @@ func ColorWrapper(msg string, color int) string {
 		return msg
 	}
 }
+
+func ColorWrapperInfo(color int, nodelist []string, msg string) {
+	diviLine := ColorWrapper("--------------------", color)
+	metaLine := ColorWrapper(fmt.Sprintf("%s  (%d)", utils.ConvertNodelist(nodelist), len(nodelist)), color)
+	Infof("%s\n%s\n%s\n%s\n\n", diviLine, metaLine, diviLine, msg)
+}

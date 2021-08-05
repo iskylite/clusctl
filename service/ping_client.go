@@ -7,6 +7,7 @@ import (
 	"myclush/pb"
 	"myclush/utils"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
 
@@ -49,13 +50,13 @@ func (p *PingClientService) Ping(ctx context.Context, node string) {
 		}
 	}()
 	if err != nil {
-		p.replayChan <- newReplay(false, err.Error(), node)
+		p.replayChan <- newReplay(false, utils.GrpcErrorMsg(err), node)
 		log.Errorf("Node [%s] Error: %s\n", node, err)
 	} else {
 		client := pb.NewRpcServiceClient(conn)
 		replay, err := client.Ping(ctx, &pb.GG{HH: utils.Hostname()})
 		if err != nil {
-			p.replayChan <- newReplay(false, err.Error(), node)
+			p.replayChan <- newReplay(false, utils.GrpcErrorMsg(err), node)
 			log.Error(err)
 		} else {
 			p.replayChan <- newReplay(true, "", replay.GetHH())
@@ -84,9 +85,9 @@ func (p *PingClientService) Run(ctx context.Context) {
 	wg.Wait()
 }
 
-func (p *PingClientService) Gather() (idleNodes, downNodes []string) {
-	idleNodes = make([]string, 0)
-	downNodes = make([]string, 0)
+func (p *PingClientService) Gather() {
+	idleNodes := make([]string, 0)
+	downNodes := make([]string, 0)
 	for rep := range p.replayChan {
 		if rep.Pass {
 			idleNodes = append(idleNodes, rep.Nodelist)
@@ -94,5 +95,17 @@ func (p *PingClientService) Gather() (idleNodes, downNodes []string) {
 			downNodes = append(downNodes, rep.Nodelist)
 		}
 	}
-	return
+	if len(idleNodes) > 0 {
+		log.ColorWrapperInfo(log.Success, idleNodes, "")
+	}
+	if len(downNodes) > 0 {
+		log.ColorWrapperInfo(log.Failed, downNodes, "")
+	}
+}
+
+func PingClientServiceSetup(ctx context.Context, nodes string, port, workers, timeout int) {
+	pingClientService := NewPingClientService(nodes, strconv.Itoa(port), workers)
+	pingClientService.SetTimeout(timeout)
+	go pingClientService.Run(ctx)
+	pingClientService.Gather()
 }

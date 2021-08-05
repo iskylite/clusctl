@@ -18,15 +18,15 @@ func (p *putStreamServer) RunCmd(ctx context.Context, req *pb.CmdReq) (*pb.PutSt
 	var wg sync.WaitGroup
 	wg.Add(replayBufferSize)
 	go func(wg *sync.WaitGroup, ctx context.Context) {
-		log.Debugf("Start Command=%s\n", req.Cmd)
+		log.Debugf("Start Command %s\n", req.Cmd)
 		defer wg.Done()
-		out, err := utils.ExecuteShellCmdWithContext(ctx, req.Cmd)
-		if err != nil {
-			log.Error(err)
-			replayChan <- []*pb.Replay{newReplay(false, err.Error(), utils.Hostname())}
+		out, ok := utils.ExecuteShellCmdWithContext(ctx, req.Cmd)
+		if !ok {
+			log.Error(out)
+			replayChan <- []*pb.Replay{newReplay(false, out, utils.Hostname())}
 			return
 		}
-		log.Debugf("Finish Command=%s, Out=%s", req.Cmd, string(out))
+		log.Debugf("Command %s Finished, Out => %s", req.Cmd, string(out))
 		replayChan <- []*pb.Replay{newReplay(true, string(out), utils.Hostname())}
 	}(&wg, ctx)
 
@@ -39,7 +39,7 @@ func (p *putStreamServer) RunCmd(ctx context.Context, req *pb.CmdReq) (*pb.PutSt
 				log.Warning("Found Empty AllocNOdes, Skip")
 				return
 			}
-			log.Debugf("Create RunCmdClientService For [%s]\n", nodes[0])
+			log.Debugf("Create RunCmdClientService For %s\n", nodes[0])
 			client, err := newRunCmdClientService(ctx, req.Cmd, req.Port, nodes)
 			if err != nil {
 				replayChan <- []*pb.Replay{newReplay(false, err.Error(), utils.ConvertNodelist(nodes))}

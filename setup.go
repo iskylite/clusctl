@@ -1,171 +1,318 @@
+// 命令行配置
 package main
 
 import (
 	"context"
+	"errors"
 	log "myclush/logger"
-	"myclush/pb"
 	"myclush/service"
-	"myclush/utils"
-	"strconv"
-	"sync"
+	"os"
+	"runtime"
+	"sort"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/urfave/cli/v2"
 )
 
+// 全局基本配置
+var (
+	version      string = "v1.4.2"
+	author       string = "iskylite"
+	email        string = "yantao0905@outlook.com"
+	descriptions string = "cluster manager tools by grpc service"
+)
+
+// 全局默认
+// var action func(c *cli.Context) error = func(c *cli.Context) error {
+// 	return nil
+// }
+
+// 全局变量
+var (
+	// 指定agent节点列表
+	nodes string
+	// 调试模式
+	debug bool
+	// 端口
+	port int
+)
+
+// 全局选项参数配置
+var (
+	globalFlagForNodes *cli.StringFlag = &cli.StringFlag{
+		Name:        "nodes",
+		Aliases:     []string{"n"},
+		Usage:       "app agent nodes list",
+		Destination: &nodes,
+	}
+	globalFlagForDebug *cli.BoolFlag = &cli.BoolFlag{
+		Name:        "debug",
+		Aliases:     []string{"d"},
+		Value:       false,
+		Usage:       "set log level debug",
+		Destination: &debug,
+	}
+	globalFlagForPort *cli.IntFlag = &cli.IntFlag{
+		Name:        "port",
+		Aliases:     []string{"p"},
+		Value:       1995,
+		Usage:       "grpc service port",
+		Destination: &port,
+	}
+)
+
+// 子命令设置
+var (
+	// 客户端健康检查子命令 ping
+	// 子命令 ping 的参数配置
+	pingFlagForWorkers *cli.IntFlag = &cli.IntFlag{
+		Name:    "workers",
+		Aliases: []string{"w"},
+		Value:   runtime.NumCPU(),
+		Usage:   "ping goroutine counts at the same time",
+	}
+	pingFlagForTimeout *cli.IntFlag = &cli.IntFlag{
+		Name:    "timeout",
+		Aliases: []string{"t"},
+		Value:   1,
+		Usage:   "timeout for check agent status",
+	}
+	// 子命令 ping 配置
+	pingCommandConfig *cli.Command = &cli.Command{
+		Name:    "ping",
+		Aliases: []string{"P"},
+		Usage:   "check all agent status",
+		Flags: []cli.Flag{
+			pingFlagForWorkers,
+			pingFlagForTimeout,
+		},
+		Action: func(c *cli.Context) error {
+			service.PingClientServiceSetup(ctx, nodes, port, c.Int("workers"), c.Int("timeout"))
+			return nil
+		},
+	}
+	// 开启服务端子命令 serve
+	// 子命令 serve 配置
+	serveCommandConfig *cli.Command = &cli.Command{
+		Name:    "serve",
+		Aliases: []string{"S"},
+		Usage:   "start server",
+		Action: func(c *cli.Context) error {
+			service.PutStreamServerServiceSetup(ctx, cancel, c.App.Name, port)
+			return nil
+		},
+	}
+	// 远程拷贝文件子命令 rcopy
+	// 子命令 rcopy 的参数配置
+	rcopyFlagForFile *cli.StringFlag = &cli.StringFlag{
+		Name:     "file",
+		Aliases:  []string{"f"},
+		Usage:    "local `FILE` path",
+		Required: true,
+	}
+	rcopyFlagForDestdir *cli.StringFlag = &cli.StringFlag{
+		Name:    "dest",
+		Aliases: []string{"d"},
+		Usage:   "dest `DIR` on remote host",
+		Value:   "/tmp",
+	}
+	rcopyFlagForWidth *cli.IntFlag = &cli.IntFlag{
+		Name:    "width",
+		Aliases: []string{"w"},
+		Usage:   "B+ tree width for transmission data",
+		Value:   50,
+	}
+	rcopyFlagForBufferSize *cli.StringFlag = &cli.StringFlag{
+		Name:    "size",
+		Aliases: []string{"b", "s"},
+		Usage:   "payload size (eg: 51200, 512k, 1m) in rpc package",
+		Value:   "512k",
+	}
+	// 子命令 rcopy 配置
+	rcopyCommandConfig *cli.Command = &cli.Command{
+		Name:    "rcopy",
+		Aliases: []string{"rc", "r"},
+		Usage:   "copy local file to remote host by grpc service",
+		Flags: []cli.Flag{
+			rcopyFlagForFile,
+			rcopyFlagForBufferSize,
+			rcopyFlagForDestdir,
+			rcopyFlagForWidth,
+		},
+		Action: func(c *cli.Context) error {
+			service.PutStreamClientServiceSetup(ctx, cancel, c.String("file"), c.String("dest"), nodes, c.String("size"), port, c.Int("width"))
+			return nil
+		},
+	}
+	// 远程执行子命令 exec
+	// 子命令exec 参数配置
+	execFlagForCmd *cli.StringFlag = &cli.StringFlag{
+		Name:     "cmd",
+		Aliases:  []string{"c"},
+		Required: true,
+		Usage:    "linux shell command to run",
+	}
+	execFlagForWidth *cli.IntFlag = &cli.IntFlag{
+		Name:    "width",
+		Aliases: []string{"w"},
+		Usage:   "B+ tree width for executing command",
+		Value:   50,
+	}
+	execFlagForList *cli.BoolFlag = &cli.BoolFlag{
+		Name:    "list",
+		Aliases: []string{"l"},
+		Usage:   "sort command output by node list",
+		Value:   false,
+	}
+	// 子命令 exec 配置
+	execCommandConfig *cli.Command = &cli.Command{
+		Name:    "execute",
+		Aliases: []string{"exec", "e"},
+		Usage:   "execute linux shell command on remote host",
+		Flags: []cli.Flag{
+			execFlagForCmd,
+			execFlagForList,
+			execFlagForWidth,
+		},
+		Action: func(c *cli.Context) error {
+			service.RunCmdClientServiceSetup(ctx, cancel, c.String("cmd"), nodes, c.Int("width"), port, c.Bool("list"))
+			return nil
+		},
+	}
+	// 节点带宽测试子命令 oo_bw
+	// 子命令 oo_bw 参数配置
+	oobwFlagForNodes *cli.StringFlag = &cli.StringFlag{
+		Name:     "nodes",
+		Aliases:  []string{"N"},
+		Usage:    "remote agent host for oo_bw test",
+		Required: true,
+	}
+	oobwFlagForBlockSize *cli.StringFlag = &cli.StringFlag{
+		Name:    "blockSize",
+		Aliases: []string{"b"},
+		Usage:   "block size (16x) for oo_bw test",
+		Value:   "0x100000",
+	}
+	// 子命令 oo_bw 配置
+	oobwCommandConfig *cli.Command = &cli.Command{
+		Name:    "oo_bw",
+		Aliases: []string{"o"},
+		Usage:   "normal oo_bw test for point to point",
+		Flags: []cli.Flag{
+			oobwFlagForBlockSize,
+			oobwFlagForNodes,
+		},
+		Action: func(c *cli.Context) error {
+			service.OoBwServiceSetup(ctx, nodes, c.String("nodes"), c.String("blockSize"), int64(2), false, port, 15, 10)
+			return nil
+		},
+	}
+	// 节点带宽循环测试子命令 loop_bw
+	loopbwFlagForNodes *cli.StringFlag = &cli.StringFlag{
+		Name:     "nodes",
+		Aliases:  []string{"N"},
+		Usage:    "remote agent host for loop_bw test",
+		Required: true,
+	}
+	loopbwFlagForBlockSize *cli.StringFlag = &cli.StringFlag{
+		Name:    "blockSize",
+		Aliases: []string{"b"},
+		Usage:   "block size (16x) for loop_bw test",
+		Value:   "0x100000",
+	}
+	loopbwFlagForAfterTimes *cli.Int64Flag = &cli.Int64Flag{
+		Name:    "after",
+		Aliases: []string{"a"},
+		Usage:   "run loop_bw after some seconds at the same time",
+		Value:   2,
+	}
+	loopbwFlagForLength *cli.IntFlag = &cli.IntFlag{
+		Name:    "len",
+		Aliases: []string{"l"},
+		Usage:   "loop_bw offset length (8 >> `LEN`)",
+		Value:   15,
+	}
+	loopbwFlagForCounts *cli.IntFlag = &cli.IntFlag{
+		Name:    "count",
+		Aliases: []string{"c"},
+		Usage:   "loop_bw test counts",
+		Value:   10,
+	}
+	// 子命令 loop_bw 配置
+	loopbwCommandConfig *cli.Command = &cli.Command{
+		Name:    "loop_bw",
+		Aliases: []string{"O"},
+		Usage:   "loop_bw test",
+		Flags: []cli.Flag{
+			loopbwFlagForAfterTimes,
+			loopbwFlagForBlockSize,
+			loopbwFlagForCounts,
+			loopbwFlagForLength,
+			loopbwFlagForNodes,
+		},
+		Action: func(c *cli.Context) error {
+			service.OoBwServiceSetup(ctx, nodes, c.String("nodes"), c.String("blockSize"), c.Int64("after"), true, port, c.Int("len"), c.Int("count"))
+			return nil
+		},
+	}
+)
+
+func run(ctx context.Context, cancel context.CancelFunc) error {
+	app := &cli.App{
+		// 基本信息
+		// Name:     name,
+		// HelpName: name,
+		Version: version,
+		// Description: descriptions,
+		Usage: descriptions,
+		// 子命令执行前的设置
+		Before: func(c *cli.Context) error {
+			setLogLevel(c.Bool("debug"))
+			return checkPrivileges()
+		},
+		Authors: []*cli.Author{
+			{
+				Name:  author,
+				Email: email,
+			},
+		},
+		// 全局选项参数配置
+		Flags: []cli.Flag{
+			globalFlagForNodes,
+			globalFlagForDebug,
+			globalFlagForPort,
+		},
+		// 子命令配置
+		Commands: []*cli.Command{
+			pingCommandConfig,
+			serveCommandConfig,
+			rcopyCommandConfig,
+			execCommandConfig,
+			oobwCommandConfig,
+			loopbwCommandConfig,
+		},
+	}
+
+	sort.Sort(cli.FlagsByName(app.Flags))
+	sort.Sort(cli.CommandsByName(app.Commands))
+
+	err := app.Run(os.Args)
+	return err
+}
+
 func setLogLevel(debug bool) {
+	log.SetColor()
+	log.SetSilent()
 	if debug {
+		log.ResetSilent()
 		log.SetLevel(log.DEBUG)
 		log.Debug("Logger Setup In DEBUG Mode")
-	} else {
-		log.SetSilent()
 	}
 }
 
-func putStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, destDir, nodes, buffer string, port, width int) {
-	defer cancel()
-	bufferSize, err := utils.ConvertSize(buffer)
-	if err != nil {
-		log.Error(err)
-		return
+func checkPrivileges() error {
+	// privileges check
+	if os.Getuid() != 0 {
+		return errors.New("need root privileges")
 	}
-	clientService, err := service.NewPutStreamClientService(localFile, destDir, nodes, strconv.Itoa(port), int32(width))
-	if err != nil {
-		log.Errorf("PutStreamClientService Failed, err=[%s]\n", err.Error())
-		return
-	}
-	err = clientService.GenStreamWithContext(ctx)
-	if err != nil {
-		log.Errorf("PutStreamClientService Failed, err=[%s]\n",
-			status.Code(err).String())
-		return
-	}
-	err = clientService.RunServe(ctx, bufferSize)
-	if err != nil {
-		log.Errorf("PutStreamClientService Failed, err=[%s], T=[%#s]\n", err.Error(), status.Code(err).String())
-		// 取消或者发送失败需要汇总错误信息
-		// return
-	}
-	replays, err := clientService.CloseAndRecv()
-	log.Debug("PutStreamClientService Recv All Replay...")
-	if err != nil {
-		if status.Code(err) == codes.Canceled {
-			log.Errorf("PutStreamClientService Canceled\n")
-		} else {
-			log.Errorf("PutStreamClientService Failed, err=[%s]\n", err.Error())
-		}
-		return
-	}
-
-	idleNodes, downNodes, cancelNodes := clientService.Gather(replays.Replay)
-
-	log.Infof("%s: %s, %s: %d\n", log.ColorWrapper("PASS", log.Success), utils.ConvertNodelist(idleNodes), log.ColorWrapper("SUM", log.Success), len(idleNodes))
-	if len(downNodes) > 0 {
-		log.Infof("%s: %s, %s: %d\n", log.ColorWrapper("FAILED", log.Failed), utils.ConvertNodelist(downNodes), log.ColorWrapper("SUM", log.Failed), len(downNodes))
-	}
-	if len(cancelNodes) > 0 {
-		log.Infof("%s: %s, %s: %d\n", log.ColorWrapper("CANCEL", log.Cancel), utils.ConvertNodelist(cancelNodes), log.ColorWrapper("SUM", log.Cancel), len(cancelNodes))
-	}
-	log.Debug("PutStreamClientService Stop")
-}
-
-func putStreamServerServiceSetup(ctx context.Context, cancel func(), tmpDir string, port int) {
-	serverService := service.NewPutStreamServerService(tmpDir)
-	go func() {
-		defer cancel()
-		err := serverService.RunServer(strconv.Itoa(port))
-		if err != nil {
-			log.Errorf("PutStreamServerService Failed, err=[%s]\n", err.Error())
-			return
-		}
-	}()
-	<-ctx.Done()
-	serverService.Stop()
-	log.Info("PutStreamServerService Stop")
-}
-
-func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cmd, nodes string, width, port int, list bool) {
-	defer cancel()
-	client, err := service.NewRunCmdClientService(ctx, cmd, nodes, strconv.Itoa(port))
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	replays, err := client.RunCmd(int32(width))
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	idleNodes, downNodes, cancelNodes := client.Gather(replays, nodes, list)
-
-	log.Infof("%s: %s, %s: %d\n", log.ColorWrapper("PASS", log.Success), utils.ConvertNodelist(idleNodes), log.ColorWrapper("SUM", log.Success), len(idleNodes))
-	if len(downNodes) > 0 {
-		log.Infof("%s: %s, %s: %d\n", log.ColorWrapper("FAILED", log.Failed), utils.ConvertNodelist(downNodes), log.ColorWrapper("SUM", log.Failed), len(downNodes))
-	}
-	if len(cancelNodes) > 0 {
-		log.Infof("%s: %s, %s: %d\n", log.ColorWrapper("CANCEL", log.Cancel), utils.ConvertNodelist(cancelNodes), log.ColorWrapper("SUM", log.Cancel), len(cancelNodes))
-	}
-}
-
-func PingClientServiceSetup(ctx context.Context, nodes string, port, workers, timeout int) {
-	pingClientService := service.NewPingClientService(nodes, strconv.Itoa(port), workers)
-	pingClientService.SetTimeout(timeout)
-	go pingClientService.Run(ctx)
-	idleNodes, downNodes := pingClientService.Gather()
-
-	log.Infof("%s: %s, %s: %d\n", log.ColorWrapper("PASS", log.Success), utils.ConvertNodelist(idleNodes), log.ColorWrapper("SUM", log.Success), len(idleNodes))
-	if len(downNodes) > 0 {
-		log.Infof("%s: %s, %s: %d\n", log.ColorWrapper("FAILED", log.Failed), utils.ConvertNodelist(downNodes), log.ColorWrapper("SUM", log.Failed), len(downNodes))
-	}
-}
-
-func OoBwServiceSetup(ctx context.Context, nodes, nnodes, oobwbuffer string, after int64, oobwloop bool, port, length, count int) {
-	cnodes := utils.ExpNodes(nodes)
-	cnode_len := len(cnodes)
-	snodes := utils.ExpNodes(nnodes)
-	snode_len := len(snodes)
-	if cnode_len != snode_len {
-		log.Error("client nodes num not equal server nodes num")
-		return
-	}
-	results := make(chan *pb.Replay, cnode_len)
-	var wg sync.WaitGroup
-	timer := utils.NewTimerAfterSeconds(after)
-	wg.Add(cnode_len)
-	for index, node := range cnodes {
-		go service.RunOoBwClientService(ctx, snodes[index], node, oobwbuffer, strconv.Itoa(port), timer, results, &wg, oobwloop, length, count)
-	}
-	wg.Wait()
-	close(results)
-	if oobwloop {
-		var passAvgSum float32
-		var passCnt int
-		transLength := 8 << length
-		log.Infof("[State] Nodes\tOffset\tLoop\tAvgBw(MB/s)\n")
-		for replay := range results {
-			if replay.Pass {
-				avg, err := service.ParseOoBwResult(replay.Msg)
-				if err != nil {
-					log.Infof("[%s] %s\t%d\t%d\t%s\n", log.ColorWrapper("FAILED", log.Failed), replay.Nodelist, length, count, avg)
-					continue
-				}
-				log.Infof("[%s] %s\t%d\t%d\t%.2f\n", log.ColorWrapper("PASS", log.Success), replay.Nodelist, length, count, avg)
-				passAvgSum += avg
-				passCnt++
-				continue
-			}
-			log.Infof("[%s] %s\t%d\t%d\t%s\n", log.ColorWrapper("FAILED", log.Failed), replay.Nodelist, length, count, replay.Msg)
-		}
-
-		log.Infof("\n[%s] %d\t%d\t%d\t%.2f\n", log.ColorWrapper("PASS", log.Success), passCnt, transLength, count, passAvgSum)
-	} else {
-		for replay := range results {
-			if replay.Pass {
-				log.Infof("[%s] %s\n%s\n", log.ColorWrapper("PASS", log.Success), replay.Nodelist, replay.Msg)
-				continue
-			}
-			log.Infof("[%s] %s\n%s\n", log.ColorWrapper("FAILED", log.Failed), replay.Nodelist, replay.Msg)
-		}
-	}
-
+	return nil
 }
