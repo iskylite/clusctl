@@ -19,24 +19,21 @@ type StreamWrapper struct {
 	err      error
 }
 
-func newStreamWrapper(ctx context.Context, filename, destPath, port string, nodes []string, width int32, wg *sync.WaitGroup) (*StreamWrapper, error) {
-	nodelist := ""
-	if len(nodes) > 1 {
-		nodelist = utils.ConvertNodelist(nodes[1:])
-	}
+func newStreamWrapper(ctx context.Context, filename, destPath, port string, nodes []string, width int32, wg *sync.WaitGroup) (*StreamWrapper, []string, error) {
+	nodelist := utils.ConvertNodelist(nodes)
 	stream := &PutStreamClientService{
 		filename: filename,
 		destPath: destPath,
 		nodelist: nodelist,
 		port:     port,
-		node:     nodes[0],
-		width:    width,
+		// node:     nodes[0],
+		width: width,
 	}
-	err := stream.GenStreamWithContext(ctx)
+	down, err := stream.GenStreamWithContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, down, err
 	}
-	return &StreamWrapper{true, stream, make(chan []byte, runtime.NumCPU()), wg, nil, nil}, nil
+	return &StreamWrapper{true, stream, make(chan []byte, runtime.NumCPU()), wg, nil, nil}, down, nil
 }
 
 func (s *StreamWrapper) SetFileInfo(uid, gid, filemod uint32, modtime int64) {
@@ -99,4 +96,12 @@ func (s *StreamWrapper) CloseDataChan() {
 
 func (s *StreamWrapper) GetResult() (*pb.PutStreamResp, error) {
 	return s.replay, s.err
+}
+
+func (s *StreamWrapper) CloseConn() {
+	s.stream.CloseConn()
+}
+
+func (s *StreamWrapper) IsLocal() bool {
+	return false
 }

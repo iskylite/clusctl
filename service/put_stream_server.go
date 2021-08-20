@@ -70,6 +70,11 @@ func (p *putStreamServer) PutStream(stream pb.RpcService_PutStreamServer) error 
 	var LocalNodeList string
 	nodelist := ""
 	streams := make([]Wrapper, 0)
+	defer func() {
+		for _, stream := range streams {
+			stream.CloseConn()
+		}
+	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	log.Debug("Server Stream Start")
 	// 设置三容量的pb.PutStreamReq管道，存放当前节点和2个子节点的返回值
@@ -142,12 +147,15 @@ LOOP:
 						continue
 					}
 					addr := fmt.Sprintf("%s:%s", nodes[0], data.Port)
-					stream, err := newStreamWrapper(ctx, data.Name, data.Location, data.Port, nodes, data.Width, &wg)
+					stream, down, err := newStreamWrapper(ctx, data.Name, data.Location, data.Port, nodes, data.Width, &wg)
 					if err != nil {
 						log.Errorf("Server Stream Client [%s] Setup Failed\n", addr)
 						resps = append(resps, newReplay(false,
 							status.Code(err).String(), utils.ConvertNodelist(nodes)))
 						continue
+					}
+					if len(down) > 0 {
+						resps = append(resps, newReplay(false, "timeout", utils.ConvertNodelist(down)))
 					}
 					stream.SetFileInfo(data.Uid, data.Gid, data.Filemod, data.Modtime)
 					wg.Add(1)
@@ -168,7 +176,11 @@ LOOP:
 			log.Debugf("Md5 Check Pass, cnt=[%d], md5(origin)=[%s], md5(stream)=[%s]\n",
 				cnt, data.GetMd5(), md5Str)
 			for _, stream := range streams {
-				log.Debugf("Send Data Into Stream For Node [%s]\n", stream.GetBatchNode())
+				if stream.IsLocal() {
+					log.Debug("Send Data Into Stream For Local")
+				} else {
+					log.Debugf("Send Data Into Stream For [%s]\n", stream.GetBatchNode())
+				}
 				stream.GetDataChan() <- data.GetBody()
 			}
 			cnt++

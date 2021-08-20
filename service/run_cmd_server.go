@@ -36,7 +36,7 @@ func (p *putStreamServer) RunCmd(ctx context.Context, req *pb.CmdReq) (*pb.PutSt
 		go func(wg *sync.WaitGroup, nodes []string) {
 			defer wg.Done()
 			if len(nodes) == 0 {
-				log.Warning("Found Empty AllocNOdes, Skip")
+				log.Error("Found Empty AllocNOdes, Skip")
 				return
 			}
 			log.Debugf("Create RunCmdClientService For %s\n", nodes[0])

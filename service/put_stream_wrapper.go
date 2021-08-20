@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sync"
 
+	"myclush/logger"
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
@@ -34,6 +35,8 @@ type Wrapper interface {
 	GetBatchNode() string
 	CloseDataChan()
 	GetResult() (*pb.PutStreamResp, error)
+	CloseConn()
+	IsLocal() bool
 }
 
 type LocalWriterWrapper struct {
@@ -65,6 +68,14 @@ func (l *LocalWriterWrapper) Send(data []byte) error {
 	return nil
 }
 
+func (l *LocalWriterWrapper) CloseConn() {
+	logger.Debugf("close conn local\n")
+}
+
+func (l *LocalWriterWrapper) IsLocal() bool {
+	return true
+}
+
 func (l *LocalWriterWrapper) SendFromChannel() {
 	defer l.wg.Done()
 	cnt := 0
@@ -72,7 +83,7 @@ LOOP:
 	for {
 		select {
 		case <-l.ctx.Done():
-			log.Error("Write Data Into LocalFile Canceled, cnt=[%d]\n", cnt)
+			log.Errorf("Write Data Into LocalFile Canceled, cnt=[%d]\n", cnt)
 			l.err = errors.New("canceled")
 			break LOOP
 		case data, ok := <-l.dataChan:

@@ -300,12 +300,11 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 }
 
 func setLogLevel(debug bool) {
-	log.SetColor()
-	log.SetSilent()
 	if debug {
-		log.ResetSilent()
 		log.SetLevel(log.DEBUG)
 		log.Debug("Logger Setup In DEBUG Mode")
+	} else {
+		log.SetSilent()
 	}
 }
 

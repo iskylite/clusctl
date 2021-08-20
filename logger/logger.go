@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"myclush/utils"
 )
@@ -9,7 +10,6 @@ import (
 const (
 	DEBUG = iota
 	INFO
-	WARNING
 	ERROR
 )
 
@@ -28,11 +28,11 @@ type logger struct {
 
 func newlogger(level int) *logger {
 	defaultLogger := log.Default()
-	defaultLogger.SetFlags(log.Lshortfile)
+	defaultLogger.SetFlags(log.Lshortfile | log.Ldate | log.Ltime | log.Lmsgprefix)
 	return &logger{
 		level:  level,
 		silent: false,
-		color:  false,
+		color:  true,
 		log:    defaultLogger,
 	}
 }
@@ -45,20 +45,12 @@ func SetSilent() {
 	Logger.silent = true
 }
 
-func ResetSilent() {
-	Logger.silent = false
-}
-
-func SetColor() {
+func DisableColor() {
 	Logger.color = true
 }
 
-func ResetColor() {
-	Logger.color = false
-}
-
-func GetLevel() int {
-	return Logger.level
+func SetOutput(output io.Writer) {
+	Logger.log.SetOutput(output)
 }
 
 func Debug(a ...interface{}) {
@@ -66,11 +58,11 @@ func Debug(a ...interface{}) {
 		if Logger.silent {
 			fmt.Println(a...)
 		} else {
-			lp := "DEBUG => "
+			lp := "DEBG "
 			if Logger.color {
-				lp = "\x1b[32mDEBUG => \x1b[0m"
+				lp = "\x1b[32mDEBG \x1b[0m"
 			}
-			v := append([]interface{}{utils.LocalTime(), lp}, a...)
+			v := append([]interface{}{lp}, a...)
 			Logger.log.Output(2, fmt.Sprintln(v...))
 		}
 	}
@@ -81,11 +73,11 @@ func Debugf(format string, v ...interface{}) {
 		if Logger.silent {
 			fmt.Printf(format, v...)
 		} else {
-			lp := "DEBUG =>"
+			lp := "DEBG "
 			if Logger.color {
-				lp = "\x1b[32mDEBUG =>\x1b[0m"
+				lp = "\x1b[32mDEBG \x1b[0m"
 			}
-			levelFormat := fmt.Sprintf("%s %s %s", utils.LocalTime(), lp, format)
+			levelFormat := fmt.Sprintf("%s %s", lp, format)
 			Logger.log.Output(2, fmt.Sprintf(levelFormat, v...))
 		}
 	}
@@ -95,11 +87,11 @@ func Info(a ...interface{}) {
 		if Logger.silent {
 			fmt.Println(a...)
 		} else {
-			lp := "INFO => "
+			lp := "INFO "
 			if Logger.color {
-				lp = "\x1b[36mINFO => \x1b[0m"
+				lp = "\x1b[36mINFO \x1b[0m"
 			}
-			v := append([]interface{}{utils.LocalTime(), lp}, a...)
+			v := append([]interface{}{lp}, a...)
 			Logger.log.Output(2, fmt.Sprintln(v...))
 		}
 	}
@@ -110,54 +102,26 @@ func Infof(format string, v ...interface{}) {
 		if Logger.silent {
 			fmt.Printf(format, v...)
 		} else {
-			lp := "INFO =>"
+			lp := "INFO "
 			if Logger.color {
-				lp = "\x1b[36mINFO =>\x1b[0m"
+				lp = "\x1b[36mINFO \x1b[0m"
 			}
-			levelFormat := fmt.Sprintf("%s %s %s", utils.LocalTime(), lp, format)
+			levelFormat := fmt.Sprintf("%s %s", lp, format)
 			Logger.log.Output(2, fmt.Sprintf(levelFormat, v...))
-		}
-	}
-}
-func Warning(a ...interface{}) {
-	if Logger.level <= WARNING {
-		if Logger.silent {
-			fmt.Println(a...)
-		} else {
-			lp := "WARN => "
-			if Logger.color {
-				lp = "\x1b[33mWARN => \x1b[0m"
-			}
-			v := append([]interface{}{utils.LocalTime(), lp}, a...)
-			Logger.log.Output(2, fmt.Sprintln(v...))
 		}
 	}
 }
 
-func Warningf(format string, v ...interface{}) {
-	if Logger.level <= WARNING {
-		if Logger.silent {
-			fmt.Printf(format, v...)
-		} else {
-			lp := "WARN =>"
-			if Logger.color {
-				lp = "\x1b[33mWARN =>\x1b[0m"
-			}
-			levelFormat := fmt.Sprintf("%s %s %s", utils.LocalTime(), lp, format)
-			Logger.log.Output(2, fmt.Sprintf(levelFormat, v...))
-		}
-	}
-}
 func Error(a ...interface{}) {
 	if Logger.level <= ERROR {
 		if Logger.silent {
 			fmt.Println(a...)
 		} else {
-			lp := "ERROR => "
+			lp := "ERRO "
 			if Logger.color {
-				lp = "\x1b[31mERROR => \x1b[0m"
+				lp = "\x1b[31mERRO \x1b[0m"
 			}
-			v := append([]interface{}{utils.LocalTime(), lp}, a...)
+			v := append([]interface{}{lp}, a...)
 			Logger.log.Output(2, fmt.Sprintln(v...))
 		}
 	}
@@ -168,11 +132,11 @@ func Errorf(format string, v ...interface{}) {
 		if Logger.silent {
 			fmt.Printf(format, v...)
 		} else {
-			lp := "ERROR => "
+			lp := "ERRO "
 			if Logger.color {
-				lp = "\x1b[31mERROR => \x1b[0m"
+				lp = "\x1b[31mERRO \x1b[0m"
 			}
-			levelFormat := fmt.Sprintf("%s %s%s", utils.LocalTime(), lp, format)
+			levelFormat := fmt.Sprintf("%s %s", lp, format)
 			Logger.log.Output(2, fmt.Sprintf(levelFormat, v...))
 		}
 	}
@@ -182,7 +146,6 @@ const (
 	Primary = 36
 	Success = 32
 	Failed  = 31
-	Warn    = 33
 	Cancel  = 34
 )
 
