@@ -12,3 +12,4 @@
 *.out
 cmd/*
 *clush*
+.fuse_hidder*
