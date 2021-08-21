@@ -224,7 +224,7 @@ LOOP:
 				fmt.Printf("\rData Transmission: %d/%d\n", cnt, counts)
 				return err
 			}
-			fmt.Printf("\rData Transmission: %d/%d", cnt, counts)
+			fmt.Printf("\rData Transmission: %d/%d\r", cnt, counts)
 		}
 	}
 	return nil

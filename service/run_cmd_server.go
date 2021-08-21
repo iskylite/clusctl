@@ -13,21 +13,21 @@ func (p *putStreamServer) RunCmd(ctx context.Context, req *pb.CmdReq) (*pb.PutSt
 	// init
 	splitNodes := utils.SplitNodesByWidth(utils.ExpNodes(req.Nodelist), req.Width)
 	replayBufferSize := len(splitNodes) + 1
-	replayChan := make(chan []*pb.Replay, replayBufferSize)
-	log.Debugf("Result Channel Length Is %d\n", replayBufferSize)
+	resps := make([]*pb.Replay, 0)
 	var wg sync.WaitGroup
 	wg.Add(replayBufferSize)
+	log.Debugf("WaitGroup %d\n", replayBufferSize)
 	go func(wg *sync.WaitGroup, ctx context.Context) {
 		log.Debugf("Start Command %s\n", req.Cmd)
 		defer wg.Done()
 		out, ok := utils.ExecuteShellCmdWithContext(ctx, req.Cmd)
 		if !ok {
 			log.Error(out)
-			replayChan <- []*pb.Replay{newReplay(false, out, utils.Hostname())}
+			resps = append(resps, newReplay(false, out, utils.Hostname()))
 			return
 		}
 		log.Debugf("Command %s Finished, Out => %s", req.Cmd, string(out))
-		replayChan <- []*pb.Replay{newReplay(true, string(out), utils.Hostname())}
+		resps = append(resps, newReplay(true, string(out), utils.Hostname()))
 	}(&wg, ctx)
 
 	// batch RunCmd
@@ -40,24 +40,23 @@ func (p *putStreamServer) RunCmd(ctx context.Context, req *pb.CmdReq) (*pb.PutSt
 				return
 			}
 			log.Debugf("Create RunCmdClientService For %s\n", nodes[0])
-			client, err := newRunCmdClientService(ctx, req.Cmd, req.Port, nodes)
+			client, down, err := newRunCmdClientService(ctx, req.Cmd, req.Port, nodes)
 			if err != nil {
-				replayChan <- []*pb.Replay{newReplay(false, err.Error(), utils.ConvertNodelist(nodes))}
+				resps = append(resps, newReplay(false, err.Error(), utils.ConvertNodelist(nodes)))
 				return
 			}
+			if len(down) > 0 {
+				resps = append(resps, newReplay(false, "connect failed", utils.ConvertNodelist(down)))
+			}
+			defer client.CloseConn()
 			replays, err := client.RunCmd(req.Width)
 			if err != nil {
-				replayChan <- []*pb.Replay{newReplay(false, err.Error(), utils.ConvertNodelist(nodes))}
+				resps = append(resps, newReplay(false, err.Error(), utils.ConvertNodelist(nodes)))
 				return
 			}
-			replayChan <- replays
+			resps = append(resps, replays...)
 		}(&wg, nodes)
 	}
 	wg.Wait()
-	close(replayChan)
-	resps := make([]*pb.Replay, 0)
-	for replays := range replayChan {
-		resps = append(resps, replays...)
-	}
 	return &pb.PutStreamResp{Replay: resps}, nil
 }

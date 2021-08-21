@@ -125,7 +125,7 @@ var (
 		Name:    "size",
 		Aliases: []string{"b", "s"},
 		Usage:   "payload size (eg: 51200, 512k, 1m) in rpc package",
-		Value:   "512k",
+		Value:   "2M",
 	}
 	// 子命令 rcopy 配置
 	rcopyCommandConfig *cli.Command = &cli.Command{

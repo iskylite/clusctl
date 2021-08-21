@@ -2,52 +2,84 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"myclush/logger"
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
 	"strconv"
+	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 )
 
 type RunCmdClientService struct {
 	cmd      string
 	nodelist string
 	port     string
+	node     string
+	conn     *grpc.ClientConn
 	client   pb.RpcServiceClient
 	ctx      context.Context
 }
 
-func NewRunCmdClientService(ctx context.Context, cmd, nodelist, port string) (*RunCmdClientService, error) {
+func NewRunCmdClientService(ctx context.Context, cmd, nodelist, port string) (*RunCmdClientService, []string, error) {
 	nodes := utils.ExpNodes(nodelist)
 	return newRunCmdClientService(ctx, cmd, port, nodes)
 }
 
-func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []string) (*RunCmdClientService, error) {
-	batchNode := nodes[0]
-	allocNodelist := ""
-	if len(nodes) > 1 {
-		allocNodelist = utils.ConvertNodelist(nodes[1:])
-	}
-	addr := fmt.Sprintf("%s:%s", batchNode, port)
-	// grpc 最大传输数据大小 每个子节点传输3M大小*总节点数
+func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []string) (*RunCmdClientService, []string, error) {
+	nodesNum := len(nodes)
+	down := make([]string, 0)
+	var conn *grpc.ClientConn
+	var stream pb.RpcServiceClient
+	var err error
+	p := new(RunCmdClientService)
+	p.cmd, p.port, p.ctx = cmd, port, ctx
 	grpcOptions := grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024 * 1024 * 3 * len(nodes)))
-	// ctx, _ = context.WithTimeout(ctx, time.Second)
+	for i := 0; i < nodesNum; i++ {
+		node := nodes[i]
+		conn, stream, err = checkConn(ctx, node, port, grpcOptions)
+		if err != nil {
+			down = append(down, node)
+			continue
+		}
+		p.node, p.conn, p.client = node, conn, stream
+		p.nodelist = utils.ConvertNodelist(nodes[i+1 : nodesNum])
+		break
+	}
+	// 只要有一个连接成功，那么err就会被赋值为nil，否则则是连接失败的错误
+	// 故当err为错误的时候，所有节点都连接失败
+	return p, down, err
+}
+
+func checkConn(ctx context.Context, node, port string, grpcOptions grpc.DialOption) (*grpc.ClientConn, pb.RpcServiceClient, error) {
+	addr := fmt.Sprintf("%s:%s", node, port)
 	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpcOptions)
 	if err != nil {
-		return nil, utils.GrpcErrorWrapper(err)
+		logger.Error(err)
+		return nil, nil, err
 	}
-	log.Debugf("Dial Server %s\n", addr)
 	client := pb.NewRpcServiceClient(conn)
-	log.Debugf("Connect Server %s\n", addr)
-	return &RunCmdClientService{
-		cmd:      cmd,
-		client:   client,
-		nodelist: allocNodelist,
-		ctx:      ctx,
-		port:     port,
-	}, err
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Debugf("connect timeout for %s\n", node)
+			if conn != nil {
+				conn.Close()
+			}
+			return nil, nil, errors.New("timeout")
+		default:
+			if conn.GetState() == connectivity.Ready {
+				log.Debugf("Gen client stream -> %s\n", addr)
+				return conn, client, utils.GrpcErrorWrapper(err)
+			}
+		}
+	}
 }
 
 func (r *RunCmdClientService) RunCmd(width int32) ([]*pb.Replay, error) {
@@ -63,6 +95,11 @@ func (r *RunCmdClientService) RunCmd(width int32) ([]*pb.Replay, error) {
 		resps = append(resps, resp.Replay...)
 	}
 	return resps, nil
+}
+
+func (r *RunCmdClientService) CloseConn() {
+	r.conn.Close()
+	logger.Debugf("close conn %s\n", r.node)
 }
 
 func (r *RunCmdClientService) Gather(replay []*pb.Replay, nodelist string, flag bool) {
@@ -95,15 +132,21 @@ func (r *RunCmdClientService) Gather(replay []*pb.Replay, nodelist string, flag 
 
 func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cmd, nodes string, width, port int, list bool) {
 	defer cancel()
-	client, err := NewRunCmdClientService(ctx, cmd, nodes, strconv.Itoa(port))
+	resps := make([]*pb.Replay, 0)
+	client, down, err := NewRunCmdClientService(ctx, cmd, nodes, strconv.Itoa(port))
 	if err != nil {
 		log.Error(err)
 		return
 	}
+	defer client.CloseConn()
 	replays, err := client.RunCmd(int32(width))
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	client.Gather(replays, nodes, list)
+	if len(down) > 0 {
+		resps = append(resps, newReplay(false, "connect failed", utils.ConvertNodelist(down)))
+	}
+	resps = append(resps, replays...)
+	client.Gather(resps, nodes, list)
 }
