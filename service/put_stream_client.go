@@ -256,7 +256,7 @@ func PutStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, 
 	if err != nil {
 		log.Errorf("PutStreamClientService Failed, err=[%s]\n", err.Error())
 		// 取消或者发送失败需要汇总错误信息
-		// return
+		return
 	}
 	log.Debug("PutStreamClientService Start Recv All Replay...")
 	replays, err := clientService.CloseAndRecv()

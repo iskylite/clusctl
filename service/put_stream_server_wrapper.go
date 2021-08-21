@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
+	"myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
 	"sync"
+	"time"
 
-	// log "myclush/logger"
 	"runtime"
 )
 
@@ -45,10 +47,23 @@ func (s *StreamWrapper) SetBad() {
 }
 
 func (s *StreamWrapper) Send(body []byte) error {
+	var err error
 	if s.Ok {
-		return s.stream.Send(body)
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		var waitc chan struct{} = make(chan struct{})
+		go func() {
+			defer close(waitc)
+			err = s.stream.Send(body)
+		}()
+		select {
+		case <-ctx.Done():
+			err = errors.New("send timeout")
+		case <-waitc:
+
+		}
 	}
-	return nil
+	return err
 }
 
 func (s *StreamWrapper) SendFromChannel() {
@@ -56,17 +71,18 @@ func (s *StreamWrapper) SendFromChannel() {
 	for data := range s.dataChan {
 		err := s.Send(data)
 		if err != nil {
+			logger.Error(err)
 			s.SetBad()
-			break
+			// break
 		}
 	}
 	s.replay, s.err = s.CloseAndRecv()
 }
 
 func (s *StreamWrapper) CloseAndRecv() (*pb.PutStreamResp, error) {
-	if !s.Ok {
-		return nil, nil
-	}
+	// if !s.Ok {
+	// 	return nil, nil
+	// }
 	return s.stream.CloseAndRecv()
 }
 

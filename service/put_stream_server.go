@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"io"
+	"myclush/logger"
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
@@ -28,6 +29,14 @@ func NewPutStreamServerService(tmpDir string) *putStreamServer {
 	return &putStreamServer{
 		tmpDir: filepath.Join("/tmp", tmpDir),
 	}
+}
+
+func clearTempDir(temp string) {
+	if err := os.RemoveAll(temp); err != nil {
+		logger.Errorf("clear temp error: %s\n", err)
+		return
+	}
+	logger.Debug("clear temp dir  Before server stop")
 }
 
 func (p *putStreamServer) PutStream(stream pb.RpcService_PutStreamServer) error {
@@ -206,6 +215,7 @@ LOOP:
 
 func PutStreamServerServiceSetup(ctx context.Context, cancel func(), tmpDir string, port int) {
 	serverService := NewPutStreamServerService(tmpDir)
+	defer clearTempDir(serverService.tmpDir)
 	go func() {
 		defer cancel()
 		err := serverService.RunServer(strconv.Itoa(port))
