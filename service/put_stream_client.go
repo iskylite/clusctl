@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -27,6 +28,7 @@ type PutStreamClientService struct {
 	port     string
 	nodelist string
 	node     string
+	num      int
 	width    int32
 	uid      uint32
 	gid      uint32
@@ -138,12 +140,12 @@ func (p *PutStreamClientService) checkConn(ctx context.Context, node string) (*g
 
 func (p *PutStreamClientService) GenStreamWithContext(ctx context.Context) ([]string, error) {
 	nodes := utils.ExpNodes(p.nodelist)
-	nodesNum := len(nodes)
+	p.num = len(nodes)
 	down := make([]string, 0)
 	var conn *grpc.ClientConn
 	var stream pb.RpcService_PutStreamClient
 	var err error
-	for i := 0; i < nodesNum; i++ {
+	for i := 0; i < p.num; i++ {
 		node := nodes[i]
 		conn, stream, err = p.checkConn(ctx, node)
 		if err != nil {
@@ -151,7 +153,7 @@ func (p *PutStreamClientService) GenStreamWithContext(ctx context.Context) ([]st
 			continue
 		}
 		p.node, p.conn, p.stream = node, conn, stream
-		p.nodelist = utils.ConvertNodelist(nodes[i+1 : nodesNum])
+		p.nodelist = utils.ConvertNodelist(nodes[i+1 : p.num])
 		break
 	}
 	// 只要有一个连接成功，那么err就会被赋值为nil，否则则是连接失败的错误
@@ -177,11 +179,6 @@ func (p *PutStreamClientService) Send(data []byte) error {
 	return p.stream.Send(putStreamReq)
 }
 
-func (p *PutStreamClientService) CloseAndRecv() (*pb.PutStreamResp, error) {
-	replay, err := p.stream.CloseAndRecv()
-	return replay, utils.GrpcErrorWrapper(err)
-}
-
 func (p *PutStreamClientService) RunServe(ctx context.Context, buffer int) error {
 	fp, err := os.Open(p.srcPath)
 	if err != nil {
@@ -202,26 +199,29 @@ LOOP:
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Printf("\rData Transmission: %d/%d\n", cnt, counts)
+			fmt.Printf("\rData Transmission: %d/%d %s\n", cnt, counts, log.ColorWrapper("CANCEL", log.Cancel))
 			log.Debugf("\nCancel Client, cnt=[%d]\n", cnt)
 			break LOOP
 		default:
 			bufferBytes := make([]byte, buffer)
 			n, err := fp.Read(bufferBytes)
 			if err == io.EOF && n == 0 {
-				fmt.Printf("\rData Transmission: %d/%d\n", cnt, counts)
-				log.Debugf("\nRead FILE EOF, cnt=[%d]\n", cnt)
+				fmt.Printf("\rData Transmission: %d/%d %s\n", cnt, counts, log.ColorWrapper("EOF", log.Success))
+				log.Debugf("Read FILE EOF, cnt=[%d]\n", cnt)
+				if err = p.stream.CloseSend(); err != nil {
+					log.Errorf("close send failed, %v\n", err)
+				}
 				break LOOP
 			}
 			if err != nil {
-				fmt.Printf("\rData Transmission: %d/%d\n", cnt, counts)
+				fmt.Printf("\rData Transmission: %d/%d %s\n", cnt, counts, log.ColorWrapper("ERROR", log.Failed))
 				return err
 			}
 			cnt++
 			data := bufferBytes[:buffer]
 			err = p.Send(data)
 			if err != nil {
-				fmt.Printf("\rData Transmission: %d/%d\n", cnt, counts)
+				fmt.Printf("\rData Transmission: %d/%d %s\n", cnt, counts, log.ColorWrapper("ERROR", log.Failed))
 				return err
 			}
 			fmt.Printf("\rData Transmission: %d/%d\r", cnt, counts)
@@ -246,12 +246,43 @@ func PutStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, 
 		log.Errorf("PutStreamClientService Failed, err=[%s]\n", err.Error())
 		return
 	}
+	resps := make([]*pb.Replay, 0)
 	down, err := clientService.GenStreamWithContext(ctx)
 	if err != nil {
 		log.Errorf("PutStreamClientService Failed, err=[%s]\n",
 			status.Code(err).String())
 		return
 	}
+	defer clientService.CloseConn()
+	cnt := 0
+	downCnt := len(down)
+	if downCnt > 0 {
+		cnt += downCnt
+		resps = append(resps, newReplay(false, "connect failed", utils.ConvertNodelist(down)))
+		fmt.Printf("\rReplay: %d\r", cnt)
+	}
+	var waitc sync.WaitGroup
+	waitc.Add(1)
+	go func() {
+		defer waitc.Done()
+	LOOP:
+		for {
+			data, err := clientService.stream.Recv()
+			switch err {
+			case nil:
+				resps = append(resps, data)
+				cnt += len(utils.ExpNodes(data.Nodelist))
+				fmt.Printf("\rResponse Replay: %d/%d", cnt, clientService.num)
+			case io.EOF:
+				fmt.Printf("\rResponse Replay: %d/%d %s\n", cnt, clientService.num, log.ColorWrapper("EOF", log.Success))
+				break LOOP
+			default:
+				log.Error(utils.GrpcErrorMsg(err))
+				fmt.Printf("\rResponse Replay: %d/%d %s\n", cnt, clientService.num, log.ColorWrapper("ERROR", log.Failed))
+				break LOOP
+			}
+		}
+	}()
 	err = clientService.RunServe(ctx, bufferSize)
 	if err != nil {
 		log.Errorf("PutStreamClientService Failed, err=[%s]\n", err.Error())
@@ -259,14 +290,7 @@ func PutStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, 
 		return
 	}
 	log.Debug("PutStreamClientService Start Recv All Replay...")
-	replays, err := clientService.CloseAndRecv()
-	if err != nil {
-		log.Errorf("PutStreamClientService Failed, err=[%s]\n", err.Error())
-		return
-	}
-	if len(down) > 0 {
-		replays.Replay = append(replays.Replay, newReplay(false, "connect failed", utils.ConvertNodelist(down)))
-	}
-	clientService.Gather(replays.Replay)
+	waitc.Wait()
+	clientService.Gather(resps)
 	log.Debug("PutStreamClientService Stop")
 }

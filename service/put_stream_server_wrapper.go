@@ -3,22 +3,26 @@ package service
 import (
 	"context"
 	"errors"
+	"io"
 	"myclush/logger"
+	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"runtime"
 )
 
 type StreamWrapper struct {
-	Ok       bool
-	stream   *PutStreamClientService
-	dataChan chan []byte
-	wg       *sync.WaitGroup
-	replay   *pb.PutStreamResp
-	err      error
+	Ok              atomic.Value
+	stream          *PutStreamClientService
+	dataChan        chan []byte
+	replaiesChannel chan *pb.Replay
+	wg              *sync.WaitGroup
+	replay          *pb.PutStreamResp
+	err             error
 }
 
 func newStreamWrapper(ctx context.Context, filename, destPath, port string, nodes []string, width int32, wg *sync.WaitGroup) (*StreamWrapper, []string, error) {
@@ -35,20 +39,26 @@ func newStreamWrapper(ctx context.Context, filename, destPath, port string, node
 	if err != nil {
 		return nil, down, err
 	}
-	return &StreamWrapper{true, stream, make(chan []byte, runtime.NumCPU()), wg, nil, nil}, down, nil
+	var ok atomic.Value
+	ok.Store(true)
+	return &StreamWrapper{ok, stream, make(chan []byte, runtime.NumCPU()), nil, wg, nil, nil}, down, nil
 }
 
 func (s *StreamWrapper) SetFileInfo(uid, gid, filemod uint32, modtime int64) {
 	s.stream.SetFileInfo(uid, gid, filemod, modtime)
 }
 
+func (s *StreamWrapper) DiscribeReplaiesChannel(replaiesChannel chan *pb.Replay) {
+	s.replaiesChannel = replaiesChannel
+}
+
 func (s *StreamWrapper) SetBad() {
-	s.Ok = false
+	s.Ok.Store(false)
 }
 
 func (s *StreamWrapper) Send(body []byte) error {
 	var err error
-	if s.Ok {
+	if s.Ok.Load().(bool) {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		var waitc chan struct{} = make(chan struct{})
@@ -67,23 +77,43 @@ func (s *StreamWrapper) Send(body []byte) error {
 }
 
 func (s *StreamWrapper) SendFromChannel() {
+	defer log.Debugf("stop PutStreamClientService %s\n", s.stream.node)
 	defer s.wg.Done()
-	for data := range s.dataChan {
-		err := s.Send(data)
-		if err != nil {
+	var waitc sync.WaitGroup
+	waitc.Add(1)
+	go func() {
+		defer waitc.Done()
+	LOOP:
+		for {
+			data, err := s.stream.stream.Recv()
+			switch err {
+			case nil:
+				s.replaiesChannel <- data
+				log.Debugf("node=%s, into replay=%s\n", data.Nodelist, data.Msg)
+			case io.EOF:
+				log.Debug("client service recv EOF")
+				break LOOP
+			default:
+				log.Error(utils.GrpcErrorMsg(err))
+				break LOOP
+			}
+		}
+	}()
+	for {
+		data, ok := <-s.dataChan
+		if !ok {
+			log.Debugf("send close signal to %s\n", s.GetBatchNode())
+			s.stream.stream.CloseSend()
+			break
+		}
+		if err := s.Send(data); err != nil {
 			logger.Error(err)
 			s.SetBad()
-			// break
+			s.replaiesChannel <- newReplay(false, utils.GrpcErrorMsg(err), s.GetAllNodelist())
+			break
 		}
 	}
-	s.replay, s.err = s.CloseAndRecv()
-}
-
-func (s *StreamWrapper) CloseAndRecv() (*pb.PutStreamResp, error) {
-	// if !s.Ok {
-	// 	return nil, nil
-	// }
-	return s.stream.CloseAndRecv()
+	waitc.Wait()
 }
 
 func (s *StreamWrapper) GetNodelist() string {
@@ -102,16 +132,14 @@ func (s *StreamWrapper) GetBatchNode() string {
 	return s.stream.node
 }
 
-func (s *StreamWrapper) GetDataChan() chan []byte {
-	return s.dataChan
+func (s *StreamWrapper) RecvData(data []byte) {
+	if s.Ok.Load().(bool) {
+		s.dataChan <- data
+	}
 }
 
 func (s *StreamWrapper) CloseDataChan() {
 	close(s.dataChan)
-}
-
-func (s *StreamWrapper) GetResult() (*pb.PutStreamResp, error) {
-	return s.replay, s.err
 }
 
 func (s *StreamWrapper) CloseConn() {

@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"myclush/logger"
 	log "myclush/logger"
@@ -29,37 +32,64 @@ type Wrapper interface {
 	SetBad()
 	Send([]byte) error
 	SendFromChannel()
-	CloseAndRecv() (*pb.PutStreamResp, error)
+	DiscribeReplaiesChannel(replaiesChannel chan *pb.Replay)
 	GetAllNodelist() string
-	GetDataChan() chan []byte
+	RecvData(data []byte)
 	GetBatchNode() string
 	CloseDataChan()
-	GetResult() (*pb.PutStreamResp, error)
 	CloseConn()
 	IsLocal() bool
 }
 
 type LocalWriterWrapper struct {
-	fp       string
-	f        *os.File
-	dataChan chan []byte
-	Ok       bool
-	wg       *sync.WaitGroup
-	ctx      context.Context
-	replay   *pb.PutStreamResp
-	err      error
+	fp              string
+	f               *os.File
+	dataChan        chan []byte
+	replaiesChannel chan *pb.Replay
+	Ok              atomic.Value
+	wg              *sync.WaitGroup
+	ctx             context.Context
+	err             error
 }
 
-func newLocalWriterWrapper(ctx context.Context, fp string, f *os.File, wg *sync.WaitGroup) (*LocalWriterWrapper, error) {
-	return &LocalWriterWrapper{fp, f, make(chan []byte, runtime.NumCPU()), true, wg, ctx, nil, nil}, nil
+func newLocalWriterWrapper(ctx context.Context, data *pb.PutStreamReq, tmpDir string, wg *sync.WaitGroup) (*LocalWriterWrapper, error) {
+	// 创建临时文件
+	f, err := os.CreateTemp(tmpDir, utils.UUID())
+	if err != nil {
+		return nil, err
+	}
+	tmpfile := f.Name()
+	// 修改文件权限
+	// 属组
+	if err = f.Chown(int(data.Uid), int(data.Gid)); err != nil {
+		return nil, err
+	}
+	// 权限
+	if err = f.Chmod(os.FileMode(data.Filemod)); err != nil {
+		return nil, err
+	}
+	// 修改时间
+	if err = os.Chtimes(tmpfile, time.Now(), time.Unix(data.Modtime, 0)); err != nil {
+		return nil, err
+	}
+	fp := filepath.Join(data.Location, data.Name)
+	r := new(LocalWriterWrapper)
+	var ok atomic.Value
+	ok.Store(true)
+	r.fp, r.f, r.dataChan, r.Ok, r.wg, r.ctx = fp, f, make(chan []byte, runtime.NumCPU()), ok, wg, ctx
+	return r, nil
+}
+
+func (l *LocalWriterWrapper) DiscribeReplaiesChannel(replaiesChannel chan *pb.Replay) {
+	l.replaiesChannel = replaiesChannel
 }
 
 func (l *LocalWriterWrapper) SetBad() {
-	l.Ok = false
+	l.Ok.Store(false)
 }
 
 func (l *LocalWriterWrapper) Send(data []byte) error {
-	if l.Ok {
+	if l.Ok.Load().(bool) {
 		_, err := l.f.Write(data)
 		if err != nil {
 			return err
@@ -77,47 +107,59 @@ func (l *LocalWriterWrapper) IsLocal() bool {
 }
 
 func (l *LocalWriterWrapper) SendFromChannel() {
+	defer log.Debugf("stop LocalStreamClientService %s\n", l.GetBatchNode())
 	defer l.wg.Done()
+	defer func() {
+		err := l.CloseAndRecv()
+		if err != nil {
+			l.replaiesChannel <- newReplay(false, err.Error(), LocalNode)
+		} else {
+			l.replaiesChannel <- newReplay(true, "Success", LocalNode)
+		}
+	}()
 	cnt := 0
 LOOP:
 	for {
 		select {
 		case <-l.ctx.Done():
-			log.Errorf("Write Data Into LocalFile Canceled, cnt=[%d]\n", cnt)
+			l.SetBad()
+			log.Errorf("cnt=[%d], canceled\n", cnt)
 			l.err = errors.New("canceled")
 			break LOOP
 		case data, ok := <-l.dataChan:
 			if !ok {
-				log.Debugf("Write Data EOF Into LocalFile, cnt=[%d]\n", cnt)
+				log.Debugf("cnt=[%d], LOCAL DATA EOF\n", cnt)
 				break LOOP
 			}
 			err := l.Send(data)
 			if err != nil {
-				log.Error(err)
+				log.Errorf("cnt=[%d], %v\n", cnt, err)
 				l.err = err
 				l.SetBad()
 				break LOOP
 			}
-			log.Debugf("Write Data Into LocalFile, cnt=[%d]\n", cnt)
 			cnt++
 		}
 	}
-	l.replay, l.err = l.CloseAndRecv()
 }
 
-func (l *LocalWriterWrapper) CloseAndRecv() (*pb.PutStreamResp, error) {
-	defer l.f.Close()
-	if l.err != nil {
-		if err := os.Remove(l.f.Name()); err != nil {
-			return nil, err
+func (l *LocalWriterWrapper) CloseAndRecv() error {
+	defer os.Remove(l.f.Name())
+	if l.err == nil {
+		if err := l.f.Close(); err != nil {
+			return err
 		}
-		return nil, l.err
+		if err := os.Rename(l.f.Name(), l.fp); err != nil {
+			return err
+		}
+		log.Debugf("rename %s to %s\n", l.f.Name(), l.fp)
+		return nil
+	} else {
+		if err := l.f.Close(); err != nil {
+			log.Error(err)
+		}
+		return l.err
 	}
-	err := os.Rename(l.f.Name(), l.fp)
-	if err != nil {
-		return nil, err
-	}
-	return newPutStreamResp([]*pb.Replay{newReplay(true, "", l.GetAllNodelist())}), nil
 }
 
 func (l *LocalWriterWrapper) GetAllNodelist() string {
@@ -128,14 +170,12 @@ func (l *LocalWriterWrapper) GetBatchNode() string {
 	return utils.Hostname()
 }
 
-func (l *LocalWriterWrapper) GetDataChan() chan []byte {
-	return l.dataChan
+func (l *LocalWriterWrapper) RecvData(data []byte) {
+	if l.Ok.Load().(bool) {
+		l.dataChan <- data
+	}
 }
 
 func (l *LocalWriterWrapper) CloseDataChan() {
 	close(l.dataChan)
-}
-
-func (l *LocalWriterWrapper) GetResult() (*pb.PutStreamResp, error) {
-	return l.replay, l.err
 }

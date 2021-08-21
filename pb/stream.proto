@@ -6,7 +6,7 @@ option go_package = "pb/";
 
 // 定义rpc服务
 service RpcService {
-    rpc PutStream (stream PutStreamReq) returns (PutStreamResp);
+    rpc PutStream (stream PutStreamReq) returns (stream Replay);
     rpc RunCmd (CmdReq) returns (PutStreamResp);
     rpc Ping (GG) returns (GG);
     rpc GetNcid(GG) returns (Replay);
