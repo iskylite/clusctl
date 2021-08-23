@@ -259,7 +259,7 @@ func PutStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, 
 	if downCnt > 0 {
 		cnt += downCnt
 		resps = append(resps, newReplay(false, "connect failed", utils.ConvertNodelist(down)))
-		fmt.Printf("\rReplay: %d\r", cnt)
+		fmt.Printf("\rResponse  Replies: %d/%d\r", cnt, clientService.num)
 	}
 	var waitc sync.WaitGroup
 	waitc.Add(1)
@@ -272,13 +272,13 @@ func PutStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, 
 			case nil:
 				resps = append(resps, data)
 				cnt += len(utils.ExpNodes(data.Nodelist))
-				fmt.Printf("\rResponse Replay: %d/%d", cnt, clientService.num)
+				fmt.Printf("\rResponse  Replies: %d/%d", cnt, clientService.num)
 			case io.EOF:
-				fmt.Printf("\rResponse Replay: %d/%d %s\n", cnt, clientService.num, log.ColorWrapper("EOF", log.Success))
+				fmt.Printf("\rResponse  Replies: %d/%d %s\n", cnt, clientService.num, log.ColorWrapper("EOF", log.Success))
 				break LOOP
 			default:
 				log.Error(utils.GrpcErrorMsg(err))
-				fmt.Printf("\rResponse Replay: %d/%d %s\n", cnt, clientService.num, log.ColorWrapper("ERROR", log.Failed))
+				fmt.Printf("\rResponse  Replies: %d/%d %s\n", cnt, clientService.num, log.ColorWrapper("ERROR", log.Failed))
 				break LOOP
 			}
 		}
@@ -289,7 +289,7 @@ func PutStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, 
 		// 取消或者发送失败需要汇总错误信息
 		return
 	}
-	log.Debug("PutStreamClientService Start Recv All Replay...")
+	log.Debug("PutStreamClientService Start Recv All Replies...")
 	waitc.Wait()
 	clientService.Gather(resps)
 	log.Debug("PutStreamClientService Stop")
