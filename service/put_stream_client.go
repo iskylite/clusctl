@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -134,6 +135,9 @@ func (p *PutStreamClientService) checkConn(ctx context.Context, node string) (*g
 		logger.Debugf("connect timeout for %s\n", node)
 		return nil, nil, errors.New("timeout")
 	case <-waitc:
+		if err != nil {
+			return conn, stream, utils.GrpcErrorWrapper(err)
+		}
 		return conn, stream, err
 	}
 }
@@ -254,6 +258,22 @@ func PutStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, 
 		return
 	}
 	defer clientService.CloseConn()
+	// 获取运行状态下未获取到响应的节点
+	go func() {
+		for {
+			idle := make([]string, 0)
+			stdinBuf := bufio.NewReaderSize(os.Stdin, 1)
+			key, _ := stdinBuf.ReadByte()
+			if key == 10 {
+				// press enter
+				for _, reply := range resps {
+					idle = append(idle, utils.ExpNodes(reply.Nodelist)...)
+				}
+				idleNodes := utils.ConvertNodelist(idle)
+				log.Infof("\rNormal Replies: %s\n", idleNodes)
+			}
+		}
+	}()
 	cnt := 0
 	downCnt := len(down)
 	if downCnt > 0 {
