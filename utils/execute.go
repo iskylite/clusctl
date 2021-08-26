@@ -13,7 +13,7 @@ func RunShellCmd(cmdStr string) (string, bool) {
 }
 
 func RunShellCmdWithContext(ctx context.Context, cmdStr string) (string, bool) {
-	cmd := exec.CommandContext(context.TODO(), "/bin/bash", "-c", cmdStr)
+	cmd := exec.CommandContext(ctx, "/bin/bash", "-c", cmdStr)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
@@ -36,7 +36,7 @@ func ExecuteShellCmdWithContext(ctx context.Context, cmdStr string) (string, boo
 		if len(out) == 0 {
 			return strings.TrimSpace(err.Error()), false
 		}
-		return strings.TrimSpace(string(out)), false
+		return strings.TrimSpace(string(out)) + " " + strings.TrimSpace(err.Error()), false
 	}
 	return strings.TrimSpace(string(out)), true
 }

@@ -6,7 +6,15 @@ import (
 	"myclush/utils"
 )
 
-func gather(replay []*pb.Replay) {
+func newReply(pass bool, msg, nodeList string) *pb.Reply {
+	return &pb.Reply{
+		Pass:     pass,
+		Msg:      msg,
+		Nodelist: nodeList,
+	}
+}
+
+func gather(replay []*pb.Reply) {
 	dataPassMap, dataFailMap := utils.DataAggregation(replay)
 	dataPassMap.Range(func(key, value interface{}) bool {
 		k, ok := key.(string)

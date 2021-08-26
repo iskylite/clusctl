@@ -1,14 +1,19 @@
 package service
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"myclush/global"
 	"myclush/logger"
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
+	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -16,38 +21,42 @@ import (
 )
 
 type RunCmdClientService struct {
-	cmd      string
-	nodelist string
-	port     string
-	node     string
-	conn     *grpc.ClientConn
-	client   pb.RpcServiceClient
-	ctx      context.Context
+	cmd            string
+	nodelist       string
+	port           string
+	node           string
+	num            int
+	conn           *grpc.ClientConn
+	stream         pb.RpcService_RunCmdClient
+	ctx            context.Context
+	repliesChannel chan *pb.Reply
 }
 
-func NewRunCmdClientService(ctx context.Context, cmd, nodelist, port string) (*RunCmdClientService, []string, error) {
+func NewRunCmdClientService(ctx context.Context, cmd, nodelist, port string, width int32) (*RunCmdClientService, []string, error) {
 	nodes := utils.ExpNodes(nodelist)
-	return newRunCmdClientService(ctx, cmd, port, nodes)
+	return newRunCmdClientService(ctx, cmd, port, nodes, width, global.Authority)
 }
 
-func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []string) (*RunCmdClientService, []string, error) {
+func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []string, width int32, authority grpc.DialOption) (*RunCmdClientService, []string, error) {
 	nodesNum := len(nodes)
 	down := make([]string, 0)
 	var conn *grpc.ClientConn
-	var stream pb.RpcServiceClient
+	var stream pb.RpcService_RunCmdClient
 	var err error
 	p := new(RunCmdClientService)
-	p.cmd, p.port, p.ctx = cmd, port, ctx
+	p.cmd, p.port, p.ctx, p.num = cmd, port, ctx, nodesNum
 	grpcOptions := grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024 * 1024 * 3 * len(nodes)))
 	for i := 0; i < nodesNum; i++ {
 		node := nodes[i]
-		conn, stream, err = checkConn(ctx, node, port, grpcOptions)
+		nodelist := utils.Merge(nodes[i+1 : nodesNum]...)
+		req := &pb.CmdReq{Cmd: cmd, Nodelist: nodelist, Port: port, Width: width}
+		conn, stream, err = checkConn(ctx, node, req, grpcOptions, authority)
 		if err != nil {
 			down = append(down, node)
 			continue
 		}
-		p.node, p.conn, p.client = node, conn, stream
-		p.nodelist = utils.ConvertNodelist(nodes[i+1 : nodesNum])
+		p.node, p.conn, p.stream = node, conn, stream
+		p.nodelist = nodelist
 		break
 	}
 	// 只要有一个连接成功，那么err就会被赋值为nil，否则则是连接失败的错误
@@ -55,15 +64,25 @@ func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []strin
 	return p, down, err
 }
 
-func checkConn(ctx context.Context, node, port string, grpcOptions grpc.DialOption) (*grpc.ClientConn, pb.RpcServiceClient, error) {
-	addr := fmt.Sprintf("%s:%s", node, port)
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpcOptions)
+func checkConn(ctx context.Context, node string, req *pb.CmdReq, grpcOptions, authority grpc.DialOption) (*grpc.ClientConn, pb.RpcService_RunCmdClient, error) {
+	addr := fmt.Sprintf("%s:%s", node, req.Port)
+	// dial
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpcOptions, authority)
 	if err != nil {
 		logger.Error(err)
 		return nil, nil, err
 	}
+	// runcmd
 	client := pb.NewRpcServiceClient(conn)
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	stream, err := client.RunCmd(ctx, req)
+	if err != nil {
+		if conn != nil {
+			conn.Close()
+		}
+		return conn, nil, err
+	}
+	// waiting
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	for {
 		select {
@@ -72,29 +91,40 @@ func checkConn(ctx context.Context, node, port string, grpcOptions grpc.DialOpti
 			if conn != nil {
 				conn.Close()
 			}
-			return nil, nil, errors.New("timeout")
+			return nil, nil, errors.New("connect timeout")
 		default:
 			if conn.GetState() == connectivity.Ready {
 				log.Debugf("Gen client stream -> %s\n", addr)
-				return conn, client, utils.GrpcErrorWrapper(err)
+				return conn, stream, utils.GrpcErrorWrapper(err)
 			}
 		}
 	}
 }
 
-func (r *RunCmdClientService) RunCmd(width int32) ([]*pb.Replay, error) {
-	req := &pb.CmdReq{Cmd: r.cmd, Nodelist: r.nodelist, Width: width, Port: r.port}
-	log.Debugf("Command %s Start ...\n", r.cmd)
-	resp, err := r.client.RunCmd(r.ctx, req)
-	if err != nil {
-		return nil, utils.GrpcErrorWrapper(err)
+func (r *RunCmdClientService) DiscribeRepliesChannel(repliesChannel chan *pb.Reply) {
+	r.repliesChannel = repliesChannel
+}
+
+func (r *RunCmdClientService) RunCmd() {
+	for {
+		select {
+		case <-r.ctx.Done():
+			log.Debug("get cancel signal")
+			return
+		default:
+			reply, err := r.stream.Recv()
+			switch err {
+			case nil:
+				r.repliesChannel <- reply
+			case io.EOF:
+				log.Debugf("%s reply io.EOF\n", r.node)
+				return
+			default:
+				log.Errorf("replay err: %v\n", utils.GrpcErrorMsg(err))
+				return
+			}
+		}
 	}
-	log.Debugf("Command %s End\n", r.cmd)
-	resps := make([]*pb.Replay, 0)
-	if resp != nil {
-		resps = append(resps, resp.Replay...)
-	}
-	return resps, nil
 }
 
 func (r *RunCmdClientService) CloseConn() {
@@ -102,19 +132,19 @@ func (r *RunCmdClientService) CloseConn() {
 	logger.Debugf("close conn %s\n", r.node)
 }
 
-func (r *RunCmdClientService) Gather(replay []*pb.Replay, nodelist string, flag bool) {
+func (r *RunCmdClientService) Gather(Reply []*pb.Reply, nodelist string, flag bool) {
 	if flag {
 		// 顺序打印结果
 		nodes := utils.ExpNodes(nodelist)
-		replayMap := make(map[string]*pb.Replay)
-		for _, rep := range replay {
+		ReplyMap := make(map[string]*pb.Reply)
+		for _, rep := range Reply {
 			nodelist := utils.ExpNodes(rep.Nodelist)
 			for _, node := range nodelist {
-				replayMap[node] = rep
+				ReplyMap[node] = rep
 			}
 		}
 		for _, node := range nodes {
-			rep, ok := replayMap[node]
+			rep, ok := ReplyMap[node]
 			if !ok {
 				log.ColorWrapperInfo(log.Failed, utils.ExpNodes(node), "hostname unmatched")
 				continue
@@ -126,27 +156,68 @@ func (r *RunCmdClientService) Gather(replay []*pb.Replay, nodelist string, flag 
 			}
 		}
 	} else {
-		gather(replay)
+		gather(Reply)
 	}
 }
 
 func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cmd, nodes string, width, port int, list bool) {
 	defer cancel()
-	resps := make([]*pb.Replay, 0)
-	client, down, err := NewRunCmdClientService(ctx, cmd, nodes, strconv.Itoa(port))
+	// establish conn and call remote cmd
+	client, down, err := NewRunCmdClientService(ctx, cmd, nodes, strconv.Itoa(port), int32(width))
 	if err != nil {
 		log.Error(err)
 		return
 	}
 	defer client.CloseConn()
-	replays, err := client.RunCmd(int32(width))
+
+	// resultSet存储每个节点的是否有响应，用于在enter时输出当前没有拿到响应的节点列表
+	resOriginMap, err := hashNodesMap(nodes)
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	if len(down) > 0 {
-		resps = append(resps, newReplay(false, "connect failed", utils.ConvertNodelist(down)))
+	// 获取运行状态下未获取到响应的节点
+	go func() {
+		for {
+			idle := make([]string, 0)
+			stdinBuf := bufio.NewReaderSize(os.Stdin, 1)
+			key, _ := stdinBuf.ReadByte()
+			if key == 10 {
+				// press enter
+				resOriginMap.Range(func(key, value interface{}) bool {
+					if !value.(bool) {
+						idle = append(idle, key.(string))
+					}
+					return true
+				})
+				idleNodes := utils.Merge(idle...)
+				log.Infof("\rProgress Replies: %s\n", idleNodes)
+			}
+		}
+	}()
+	// reply handle
+	resps := make([]*pb.Reply, 0)
+	repliesChannel := make(chan *pb.Reply)
+	var waitc sync.WaitGroup
+	waitc.Add(1)
+	cnt := 0
+	go func() {
+		defer waitc.Done()
+		for reply := range repliesChannel {
+			fmt.Printf("\rResponse  Replies: %d/%d", cnt, client.num)
+			resps = append(resps, reply)
+			resOriginMap.Store(reply.Nodelist, true)
+			cnt++
+		}
+		fmt.Printf("\rResponse  Replies: %d/%d %s\n", cnt, client.num, log.ColorWrapper("EOF", log.Success))
+	}()
+	// client reply
+	for _, node := range down {
+		repliesChannel <- newReply(false, "connect or call failed", node)
 	}
-	resps = append(resps, replays...)
+	client.DiscribeRepliesChannel(repliesChannel)
+	client.RunCmd()
+	close(repliesChannel)
+	waitc.Wait()
 	client.Gather(resps, nodes, list)
 }

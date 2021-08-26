@@ -11,11 +11,15 @@ import (
 
 	"context"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 func (p *putStreamServer) PutStream(stream pb.RpcService_PutStreamServer) error {
+	// get authority
+	authorityStr, _ := getAuthorityByContext(stream.Context())
+	authority := grpc.WithAuthority(authorityStr)
 	cnt := 0
 	var once sync.Once
 	var wg sync.WaitGroup
@@ -31,12 +35,12 @@ func (p *putStreamServer) PutStream(stream pb.RpcService_PutStreamServer) error 
 	ctx, cancel := context.WithCancel(context.Background())
 	log.Debug("PutStream Server Start ... ")
 	// 响应值通道
-	replaiesChannel := make(chan *pb.Replay, runtime.NumCPU())
+	repliesChannel := make(chan *pb.Reply, runtime.NumCPU())
 	var waitc sync.WaitGroup
 	waitc.Add(1)
 	go func() {
 		defer waitc.Done()
-		for replay := range replaiesChannel {
+		for replay := range repliesChannel {
 			if err := stream.Send(replay); err != nil {
 				log.Errorf("node=%s, send replay=%s, %v\n", replay.Nodelist, replay.Msg, err)
 				break
@@ -58,7 +62,7 @@ LOOP:
 			log.Debug("Wait All Stream Done ...")
 			wg.Wait()
 			// 处理响应
-			close(replaiesChannel)
+			close(repliesChannel)
 			waitc.Wait()
 			break LOOP
 		case nil:
@@ -76,12 +80,12 @@ LOOP:
 				// 本地数据写入流客户端
 				localWriterStream, err := newLocalWriterWrapper(ctx, data, p.tmpDir, &wg)
 				if err != nil {
-					replaiesChannel <- newReplay(false, err.Error(), LocalNode)
+					repliesChannel <- newReply(false, err.Error(), LocalNode)
 				} else {
 					wg.Add(1)
 					streams = append(streams, localWriterStream)
 					go localWriterStream.SendFromChannel()
-					localWriterStream.DiscribeReplaiesChannel(replaiesChannel)
+					localWriterStream.DiscribeRepliesChannel(repliesChannel)
 				}
 				// 初始化分发流客户端
 				splitNodes := utils.SplitNodesByWidth(utils.ExpNodes(nodelist), data.Width)
@@ -92,21 +96,21 @@ LOOP:
 					}
 					addr := fmt.Sprintf("%s:%s", nodes[0], data.Port)
 					// 只要有一个连接成功就不会返回错误
-					stream, down, err := newStreamWrapper(ctx, data.Name, data.Location, data.Port, nodes, data.Width, &wg)
+					stream, down, err := newStreamWrapper(ctx, data.Name, data.Location, data.Port, nodes, data.Width, &wg, authority)
 					if err != nil {
 						log.Errorf("Server Stream Client [%s] Setup Failed\n", addr)
-						replaiesChannel <- newReplay(false,
-							utils.GrpcErrorMsg(err), utils.ConvertNodelist(nodes))
+						repliesChannel <- newReply(false,
+							utils.GrpcErrorMsg(err), utils.Merge(nodes...))
 						continue
 					}
 					if len(down) > 0 {
-						replaiesChannel <- newReplay(false, "connect timeout or failed", utils.ConvertNodelist(down))
+						repliesChannel <- newReply(false, "connect timeout or failed", utils.Merge(down...))
 					}
 					stream.SetFileInfo(data.Uid, data.Gid, data.Filemod, data.Modtime)
 					wg.Add(1)
 					log.Debugf("Server Stream Client [%s] Setup", addr)
 					streams = append(streams, stream)
-					stream.DiscribeReplaiesChannel(replaiesChannel)
+					stream.DiscribeRepliesChannel(repliesChannel)
 					go stream.SendFromChannel()
 				}
 				log.Debugf("All %d Streams Setup", len(streams))
@@ -116,14 +120,14 @@ LOOP:
 			if md5Str != data.Md5 {
 				log.Errorf("Md5 Check Failed, cnt=[%d], md5(origin)=[%s], md5(stream)=[%s]\n",
 					cnt, data.GetMd5(), md5Str)
-				replaiesChannel <- newReplay(false, "md5 unmatched", LocalNodeList)
+				repliesChannel <- newReply(false, "md5 unmatched", LocalNodeList)
 				break LOOP
 			}
 			for _, stream := range streams {
 				// if stream.IsLocal() {
-				// 	log.Debug("Send Data Into Stream For Local")
+				// 	log.Debugf("Send Data Into Stream For Local")
 				// } else {
-				// 	log.Debugf("Send Data Into Stream For [%s]\n", stream.GetBatchNode())
+				// 	log.Debugf("Send Data Into Stream For [%s]", stream.GetBatchNode())
 				// }
 				stream.RecvData(data.GetBody())
 			}
@@ -139,7 +143,7 @@ LOOP:
 				return nil
 			} else {
 				log.Errorf("stream recv error: [%s]\n", err.Error())
-				replaiesChannel <- newReplay(false, utils.GrpcErrorMsg(err), LocalNodeList)
+				repliesChannel <- newReply(false, utils.GrpcErrorMsg(err), LocalNodeList)
 			}
 			break LOOP
 		}

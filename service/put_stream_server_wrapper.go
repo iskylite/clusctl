@@ -13,20 +13,21 @@ import (
 	"time"
 
 	"runtime"
+
+	"google.golang.org/grpc"
 )
 
 type StreamWrapper struct {
-	Ok              atomic.Value
-	stream          *PutStreamClientService
-	dataChan        chan []byte
-	replaiesChannel chan *pb.Replay
-	wg              *sync.WaitGroup
-	replay          *pb.PutStreamResp
-	err             error
+	Ok             atomic.Value
+	stream         *PutStreamClientService
+	dataChan       chan []byte
+	repliesChannel chan *pb.Reply
+	wg             *sync.WaitGroup
+	err            error
 }
 
-func newStreamWrapper(ctx context.Context, filename, destPath, port string, nodes []string, width int32, wg *sync.WaitGroup) (*StreamWrapper, []string, error) {
-	nodelist := utils.ConvertNodelist(nodes)
+func newStreamWrapper(ctx context.Context, filename, destPath, port string, nodes []string, width int32, wg *sync.WaitGroup, authority grpc.DialOption) (*StreamWrapper, []string, error) {
+	nodelist := utils.Merge(nodes...)
 	stream := &PutStreamClientService{
 		filename: filename,
 		destPath: destPath,
@@ -35,21 +36,21 @@ func newStreamWrapper(ctx context.Context, filename, destPath, port string, node
 		// node:     nodes[0],
 		width: width,
 	}
-	down, err := stream.GenStreamWithContext(ctx)
+	down, err := stream.GenStreamWithContext(ctx, authority)
 	if err != nil {
 		return nil, down, err
 	}
 	var ok atomic.Value
 	ok.Store(true)
-	return &StreamWrapper{ok, stream, make(chan []byte, runtime.NumCPU()), nil, wg, nil, nil}, down, nil
+	return &StreamWrapper{ok, stream, make(chan []byte, runtime.NumCPU()), nil, wg, nil}, down, nil
 }
 
 func (s *StreamWrapper) SetFileInfo(uid, gid, filemod uint32, modtime int64) {
 	s.stream.SetFileInfo(uid, gid, filemod, modtime)
 }
 
-func (s *StreamWrapper) DiscribeReplaiesChannel(replaiesChannel chan *pb.Replay) {
-	s.replaiesChannel = replaiesChannel
+func (s *StreamWrapper) DiscribeRepliesChannel(repliesChannel chan *pb.Reply) {
+	s.repliesChannel = repliesChannel
 }
 
 func (s *StreamWrapper) SetBad() {
@@ -88,12 +89,13 @@ func (s *StreamWrapper) SendFromChannel() {
 			data, err := s.stream.stream.Recv()
 			switch err {
 			case nil:
-				s.replaiesChannel <- data
+				s.repliesChannel <- data
 				log.Debugf("node=%s, into replay=%s\n", data.Nodelist, data.Msg)
 			case io.EOF:
 				log.Debug("client service recv EOF")
 				break LOOP
 			default:
+				s.SetBad()
 				log.Error(utils.GrpcErrorMsg(err))
 				break LOOP
 			}
@@ -109,7 +111,7 @@ func (s *StreamWrapper) SendFromChannel() {
 		if err := s.Send(data); err != nil {
 			logger.Error(err)
 			s.SetBad()
-			s.replaiesChannel <- newReplay(false, utils.GrpcErrorMsg(err), s.GetAllNodelist())
+			s.repliesChannel <- newReply(false, utils.GrpcErrorMsg(err), s.GetAllNodelist())
 			break
 		}
 	}

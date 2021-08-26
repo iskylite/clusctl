@@ -160,19 +160,18 @@ func (x *PutStreamReq) GetModtime() int64 {
 	return 0
 }
 
-// node struct
-type Node struct {
+type Reply struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Width int32   `protobuf:"varint,1,opt,name=width,proto3" json:"width,omitempty"`
-	Nodes []*Node `protobuf:"bytes,2,rep,name=nodes,proto3" json:"nodes,omitempty"`
-	Value string  `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	Pass     bool   `protobuf:"varint,1,opt,name=pass,proto3" json:"pass,omitempty"`
+	Nodelist string `protobuf:"bytes,2,opt,name=nodelist,proto3" json:"nodelist,omitempty"`
+	Msg      string `protobuf:"bytes,3,opt,name=msg,proto3" json:"msg,omitempty"`
 }
 
-func (x *Node) Reset() {
-	*x = Node{}
+func (x *Reply) Reset() {
+	*x = Reply{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_stream_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -180,13 +179,13 @@ func (x *Node) Reset() {
 	}
 }
 
-func (x *Node) String() string {
+func (x *Reply) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Node) ProtoMessage() {}
+func (*Reply) ProtoMessage() {}
 
-func (x *Node) ProtoReflect() protoreflect.Message {
+func (x *Reply) ProtoReflect() protoreflect.Message {
 	mi := &file_stream_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -198,137 +197,26 @@ func (x *Node) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Node.ProtoReflect.Descriptor instead.
-func (*Node) Descriptor() ([]byte, []int) {
+// Deprecated: Use Reply.ProtoReflect.Descriptor instead.
+func (*Reply) Descriptor() ([]byte, []int) {
 	return file_stream_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *Node) GetWidth() int32 {
-	if x != nil {
-		return x.Width
-	}
-	return 0
-}
-
-func (x *Node) GetNodes() []*Node {
-	if x != nil {
-		return x.Nodes
-	}
-	return nil
-}
-
-func (x *Node) GetValue() string {
-	if x != nil {
-		return x.Value
-	}
-	return ""
-}
-
-// putStream/runcmd response
-type PutStreamResp struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Replay []*Replay `protobuf:"bytes,1,rep,name=replay,proto3" json:"replay,omitempty"`
-}
-
-func (x *PutStreamResp) Reset() {
-	*x = PutStreamResp{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_stream_proto_msgTypes[2]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PutStreamResp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PutStreamResp) ProtoMessage() {}
-
-func (x *PutStreamResp) ProtoReflect() protoreflect.Message {
-	mi := &file_stream_proto_msgTypes[2]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PutStreamResp.ProtoReflect.Descriptor instead.
-func (*PutStreamResp) Descriptor() ([]byte, []int) {
-	return file_stream_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *PutStreamResp) GetReplay() []*Replay {
-	if x != nil {
-		return x.Replay
-	}
-	return nil
-}
-
-type Replay struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Pass     bool   `protobuf:"varint,1,opt,name=pass,proto3" json:"pass,omitempty"`
-	Nodelist string `protobuf:"bytes,2,opt,name=nodelist,proto3" json:"nodelist,omitempty"`
-	Msg      string `protobuf:"bytes,3,opt,name=msg,proto3" json:"msg,omitempty"`
-}
-
-func (x *Replay) Reset() {
-	*x = Replay{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_stream_proto_msgTypes[3]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *Replay) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Replay) ProtoMessage() {}
-
-func (x *Replay) ProtoReflect() protoreflect.Message {
-	mi := &file_stream_proto_msgTypes[3]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Replay.ProtoReflect.Descriptor instead.
-func (*Replay) Descriptor() ([]byte, []int) {
-	return file_stream_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *Replay) GetPass() bool {
+func (x *Reply) GetPass() bool {
 	if x != nil {
 		return x.Pass
 	}
 	return false
 }
 
-func (x *Replay) GetNodelist() string {
+func (x *Reply) GetNodelist() string {
 	if x != nil {
 		return x.Nodelist
 	}
 	return ""
 }
 
-func (x *Replay) GetMsg() string {
+func (x *Reply) GetMsg() string {
 	if x != nil {
 		return x.Msg
 	}
@@ -341,8 +229,7 @@ type CmdReq struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Cmd string `protobuf:"bytes,1,opt,name=cmd,proto3" json:"cmd,omitempty"`
-	// int32 timeout = 2;
+	Cmd      string `protobuf:"bytes,1,opt,name=cmd,proto3" json:"cmd,omitempty"`
 	Nodelist string `protobuf:"bytes,2,opt,name=nodelist,proto3" json:"nodelist,omitempty"`
 	Width    int32  `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
 	Port     string `protobuf:"bytes,4,opt,name=port,proto3" json:"port,omitempty"`
@@ -351,7 +238,7 @@ type CmdReq struct {
 func (x *CmdReq) Reset() {
 	*x = CmdReq{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_stream_proto_msgTypes[4]
+		mi := &file_stream_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -364,7 +251,7 @@ func (x *CmdReq) String() string {
 func (*CmdReq) ProtoMessage() {}
 
 func (x *CmdReq) ProtoReflect() protoreflect.Message {
-	mi := &file_stream_proto_msgTypes[4]
+	mi := &file_stream_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -377,7 +264,7 @@ func (x *CmdReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CmdReq.ProtoReflect.Descriptor instead.
 func (*CmdReq) Descriptor() ([]byte, []int) {
-	return file_stream_proto_rawDescGZIP(), []int{4}
+	return file_stream_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *CmdReq) GetCmd() string {
@@ -408,31 +295,31 @@ func (x *CmdReq) GetPort() string {
 	return ""
 }
 
-type GG struct {
+type CommonReq struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	HH string `protobuf:"bytes,1,opt,name=HH,proto3" json:"HH,omitempty"`
+	Version string `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
 }
 
-func (x *GG) Reset() {
-	*x = GG{}
+func (x *CommonReq) Reset() {
+	*x = CommonReq{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_stream_proto_msgTypes[5]
+		mi := &file_stream_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *GG) String() string {
+func (x *CommonReq) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GG) ProtoMessage() {}
+func (*CommonReq) ProtoMessage() {}
 
-func (x *GG) ProtoReflect() protoreflect.Message {
-	mi := &file_stream_proto_msgTypes[5]
+func (x *CommonReq) ProtoReflect() protoreflect.Message {
+	mi := &file_stream_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -443,48 +330,43 @@ func (x *GG) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GG.ProtoReflect.Descriptor instead.
-func (*GG) Descriptor() ([]byte, []int) {
-	return file_stream_proto_rawDescGZIP(), []int{5}
+// Deprecated: Use CommonReq.ProtoReflect.Descriptor instead.
+func (*CommonReq) Descriptor() ([]byte, []int) {
+	return file_stream_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *GG) GetHH() string {
+func (x *CommonReq) GetVersion() string {
 	if x != nil {
-		return x.HH
+		return x.Version
 	}
 	return ""
 }
 
-// oo_bw_server 测试
-type OoBwServerReq struct {
+type CommonResp struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Ncid    string `protobuf:"bytes,1,opt,name=ncid,proto3" json:"ncid,omitempty"`
-	Buffer  string `protobuf:"bytes,2,opt,name=buffer,proto3" json:"buffer,omitempty"`
-	Timeout int32  `protobuf:"varint,3,opt,name=timeout,proto3" json:"timeout,omitempty"`
-	Length  int32  `protobuf:"varint,4,opt,name=length,proto3" json:"length,omitempty"`
-	Count   int32  `protobuf:"varint,5,opt,name=count,proto3" json:"count,omitempty"`
+	Ok bool `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
 }
 
-func (x *OoBwServerReq) Reset() {
-	*x = OoBwServerReq{}
+func (x *CommonResp) Reset() {
+	*x = CommonResp{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_stream_proto_msgTypes[6]
+		mi := &file_stream_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *OoBwServerReq) String() string {
+func (x *CommonResp) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*OoBwServerReq) ProtoMessage() {}
+func (*CommonResp) ProtoMessage() {}
 
-func (x *OoBwServerReq) ProtoReflect() protoreflect.Message {
-	mi := &file_stream_proto_msgTypes[6]
+func (x *CommonResp) ProtoReflect() protoreflect.Message {
+	mi := &file_stream_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -495,140 +377,16 @@ func (x *OoBwServerReq) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use OoBwServerReq.ProtoReflect.Descriptor instead.
-func (*OoBwServerReq) Descriptor() ([]byte, []int) {
-	return file_stream_proto_rawDescGZIP(), []int{6}
+// Deprecated: Use CommonResp.ProtoReflect.Descriptor instead.
+func (*CommonResp) Descriptor() ([]byte, []int) {
+	return file_stream_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *OoBwServerReq) GetNcid() string {
+func (x *CommonResp) GetOk() bool {
 	if x != nil {
-		return x.Ncid
+		return x.Ok
 	}
-	return ""
-}
-
-func (x *OoBwServerReq) GetBuffer() string {
-	if x != nil {
-		return x.Buffer
-	}
-	return ""
-}
-
-func (x *OoBwServerReq) GetTimeout() int32 {
-	if x != nil {
-		return x.Timeout
-	}
-	return 0
-}
-
-func (x *OoBwServerReq) GetLength() int32 {
-	if x != nil {
-		return x.Length
-	}
-	return 0
-}
-
-func (x *OoBwServerReq) GetCount() int32 {
-	if x != nil {
-		return x.Count
-	}
-	return 0
-}
-
-// oo_bw_client 测试
-type OoBwClientReq struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Server  string `protobuf:"bytes,1,opt,name=server,proto3" json:"server,omitempty"`
-	Buffer  string `protobuf:"bytes,2,opt,name=buffer,proto3" json:"buffer,omitempty"`
-	Timeout int32  `protobuf:"varint,3,opt,name=timeout,proto3" json:"timeout,omitempty"`
-	Timer   int64  `protobuf:"varint,4,opt,name=timer,proto3" json:"timer,omitempty"`
-	Port    string `protobuf:"bytes,5,opt,name=port,proto3" json:"port,omitempty"`
-	Length  int32  `protobuf:"varint,6,opt,name=length,proto3" json:"length,omitempty"`
-	Count   int32  `protobuf:"varint,7,opt,name=count,proto3" json:"count,omitempty"`
-}
-
-func (x *OoBwClientReq) Reset() {
-	*x = OoBwClientReq{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_stream_proto_msgTypes[7]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *OoBwClientReq) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*OoBwClientReq) ProtoMessage() {}
-
-func (x *OoBwClientReq) ProtoReflect() protoreflect.Message {
-	mi := &file_stream_proto_msgTypes[7]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use OoBwClientReq.ProtoReflect.Descriptor instead.
-func (*OoBwClientReq) Descriptor() ([]byte, []int) {
-	return file_stream_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *OoBwClientReq) GetServer() string {
-	if x != nil {
-		return x.Server
-	}
-	return ""
-}
-
-func (x *OoBwClientReq) GetBuffer() string {
-	if x != nil {
-		return x.Buffer
-	}
-	return ""
-}
-
-func (x *OoBwClientReq) GetTimeout() int32 {
-	if x != nil {
-		return x.Timeout
-	}
-	return 0
-}
-
-func (x *OoBwClientReq) GetTimer() int64 {
-	if x != nil {
-		return x.Timer
-	}
-	return 0
-}
-
-func (x *OoBwClientReq) GetPort() string {
-	if x != nil {
-		return x.Port
-	}
-	return ""
-}
-
-func (x *OoBwClientReq) GetLength() int32 {
-	if x != nil {
-		return x.Length
-	}
-	return 0
-}
-
-func (x *OoBwClientReq) GetCount() int32 {
-	if x != nil {
-		return x.Count
-	}
-	return 0
+	return false
 }
 
 var File_stream_proto protoreflect.FileDescriptor
@@ -652,64 +410,31 @@ var file_stream_proto_rawDesc = []byte{
 	0x67, 0x69, 0x64, 0x12, 0x18, 0x0a, 0x07, 0x66, 0x69, 0x6c, 0x65, 0x6d, 0x6f, 0x64, 0x18, 0x0b,
 	0x20, 0x01, 0x28, 0x0d, 0x52, 0x07, 0x66, 0x69, 0x6c, 0x65, 0x6d, 0x6f, 0x64, 0x12, 0x18, 0x0a,
 	0x07, 0x6d, 0x6f, 0x64, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x03, 0x52, 0x07,
-	0x6d, 0x6f, 0x64, 0x74, 0x69, 0x6d, 0x65, 0x22, 0x52, 0x0a, 0x04, 0x4e, 0x6f, 0x64, 0x65, 0x12,
-	0x14, 0x0a, 0x05, 0x77, 0x69, 0x64, 0x74, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05,
-	0x77, 0x69, 0x64, 0x74, 0x68, 0x12, 0x1e, 0x0a, 0x05, 0x6e, 0x6f, 0x64, 0x65, 0x73, 0x18, 0x02,
-	0x20, 0x03, 0x28, 0x0b, 0x32, 0x08, 0x2e, 0x70, 0x62, 0x2e, 0x4e, 0x6f, 0x64, 0x65, 0x52, 0x05,
-	0x6e, 0x6f, 0x64, 0x65, 0x73, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x33, 0x0a, 0x0d, 0x50,
-	0x75, 0x74, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x52, 0x65, 0x73, 0x70, 0x12, 0x22, 0x0a, 0x06,
-	0x72, 0x65, 0x70, 0x6c, 0x61, 0x79, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x0a, 0x2e, 0x70,
-	0x62, 0x2e, 0x52, 0x65, 0x70, 0x6c, 0x61, 0x79, 0x52, 0x06, 0x72, 0x65, 0x70, 0x6c, 0x61, 0x79,
-	0x22, 0x4a, 0x0a, 0x06, 0x52, 0x65, 0x70, 0x6c, 0x61, 0x79, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61,
-	0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x04, 0x70, 0x61, 0x73, 0x73, 0x12, 0x1a,
+	0x6d, 0x6f, 0x64, 0x74, 0x69, 0x6d, 0x65, 0x22, 0x49, 0x0a, 0x05, 0x52, 0x65, 0x70, 0x6c, 0x79,
+	0x12, 0x12, 0x0a, 0x04, 0x70, 0x61, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x04,
+	0x70, 0x61, 0x73, 0x73, 0x12, 0x1a, 0x0a, 0x08, 0x6e, 0x6f, 0x64, 0x65, 0x6c, 0x69, 0x73, 0x74,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x6e, 0x6f, 0x64, 0x65, 0x6c, 0x69, 0x73, 0x74,
+	0x12, 0x10, 0x0a, 0x03, 0x6d, 0x73, 0x67, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6d,
+	0x73, 0x67, 0x22, 0x60, 0x0a, 0x06, 0x43, 0x6d, 0x64, 0x52, 0x65, 0x71, 0x12, 0x10, 0x0a, 0x03,
+	0x63, 0x6d, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x63, 0x6d, 0x64, 0x12, 0x1a,
 	0x0a, 0x08, 0x6e, 0x6f, 0x64, 0x65, 0x6c, 0x69, 0x73, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x08, 0x6e, 0x6f, 0x64, 0x65, 0x6c, 0x69, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6d, 0x73,
-	0x67, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6d, 0x73, 0x67, 0x22, 0x60, 0x0a, 0x06,
-	0x43, 0x6d, 0x64, 0x52, 0x65, 0x71, 0x12, 0x10, 0x0a, 0x03, 0x63, 0x6d, 0x64, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x03, 0x63, 0x6d, 0x64, 0x12, 0x1a, 0x0a, 0x08, 0x6e, 0x6f, 0x64, 0x65,
-	0x6c, 0x69, 0x73, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x6e, 0x6f, 0x64, 0x65,
-	0x6c, 0x69, 0x73, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x77, 0x69, 0x64, 0x74, 0x68, 0x18, 0x03, 0x20,
-	0x01, 0x28, 0x05, 0x52, 0x05, 0x77, 0x69, 0x64, 0x74, 0x68, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x6f,
-	0x72, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x6f, 0x72, 0x74, 0x22, 0x14,
-	0x0a, 0x02, 0x47, 0x47, 0x12, 0x0e, 0x0a, 0x02, 0x48, 0x48, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x02, 0x48, 0x48, 0x22, 0x83, 0x01, 0x0a, 0x0d, 0x4f, 0x6f, 0x42, 0x77, 0x53, 0x65, 0x72,
-	0x76, 0x65, 0x72, 0x52, 0x65, 0x71, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x63, 0x69, 0x64, 0x18, 0x01,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x63, 0x69, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x62, 0x75,
-	0x66, 0x66, 0x65, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x62, 0x75, 0x66, 0x66,
-	0x65, 0x72, 0x12, 0x18, 0x0a, 0x07, 0x74, 0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74, 0x18, 0x03, 0x20,
-	0x01, 0x28, 0x05, 0x52, 0x07, 0x74, 0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74, 0x12, 0x16, 0x0a, 0x06,
-	0x6c, 0x65, 0x6e, 0x67, 0x74, 0x68, 0x18, 0x04, 0x20, 0x01, 0x28, 0x05, 0x52, 0x06, 0x6c, 0x65,
-	0x6e, 0x67, 0x74, 0x68, 0x12, 0x14, 0x0a, 0x05, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x05, 0x20,
-	0x01, 0x28, 0x05, 0x52, 0x05, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x22, 0xb1, 0x01, 0x0a, 0x0d, 0x4f,
-	0x6f, 0x42, 0x77, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x71, 0x12, 0x16, 0x0a, 0x06,
-	0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x65,
-	0x72, 0x76, 0x65, 0x72, 0x12, 0x16, 0x0a, 0x06, 0x62, 0x75, 0x66, 0x66, 0x65, 0x72, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x62, 0x75, 0x66, 0x66, 0x65, 0x72, 0x12, 0x18, 0x0a, 0x07,
-	0x74, 0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x07, 0x74,
-	0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x69, 0x6d, 0x65, 0x72, 0x18,
-	0x04, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x74, 0x69, 0x6d, 0x65, 0x72, 0x12, 0x12, 0x0a, 0x04,
-	0x70, 0x6f, 0x72, 0x74, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x6f, 0x72, 0x74,
-	0x12, 0x16, 0x0a, 0x06, 0x6c, 0x65, 0x6e, 0x67, 0x74, 0x68, 0x18, 0x06, 0x20, 0x01, 0x28, 0x05,
-	0x52, 0x06, 0x6c, 0x65, 0x6e, 0x67, 0x74, 0x68, 0x12, 0x14, 0x0a, 0x05, 0x63, 0x6f, 0x75, 0x6e,
-	0x74, 0x18, 0x07, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x32, 0xfb,
-	0x01, 0x0a, 0x0a, 0x52, 0x70, 0x63, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x2d, 0x0a,
-	0x09, 0x50, 0x75, 0x74, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x12, 0x10, 0x2e, 0x70, 0x62, 0x2e,
-	0x50, 0x75, 0x74, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x52, 0x65, 0x71, 0x1a, 0x0a, 0x2e, 0x70,
-	0x62, 0x2e, 0x52, 0x65, 0x70, 0x6c, 0x61, 0x79, 0x28, 0x01, 0x30, 0x01, 0x12, 0x27, 0x0a, 0x06,
-	0x52, 0x75, 0x6e, 0x43, 0x6d, 0x64, 0x12, 0x0a, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x6d, 0x64, 0x52,
-	0x65, 0x71, 0x1a, 0x11, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x75, 0x74, 0x53, 0x74, 0x72, 0x65, 0x61,
-	0x6d, 0x52, 0x65, 0x73, 0x70, 0x12, 0x16, 0x0a, 0x04, 0x50, 0x69, 0x6e, 0x67, 0x12, 0x06, 0x2e,
-	0x70, 0x62, 0x2e, 0x47, 0x47, 0x1a, 0x06, 0x2e, 0x70, 0x62, 0x2e, 0x47, 0x47, 0x12, 0x1d, 0x0a,
-	0x07, 0x47, 0x65, 0x74, 0x4e, 0x63, 0x69, 0x64, 0x12, 0x06, 0x2e, 0x70, 0x62, 0x2e, 0x47, 0x47,
-	0x1a, 0x0a, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x70, 0x6c, 0x61, 0x79, 0x12, 0x2e, 0x0a, 0x0d,
-	0x52, 0x75, 0x6e, 0x4f, 0x6f, 0x42, 0x77, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x12, 0x11, 0x2e,
-	0x70, 0x62, 0x2e, 0x4f, 0x6f, 0x42, 0x77, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x52, 0x65, 0x71,
-	0x1a, 0x0a, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x70, 0x6c, 0x61, 0x79, 0x12, 0x2e, 0x0a, 0x0d,
-	0x52, 0x75, 0x6e, 0x4f, 0x6f, 0x42, 0x77, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x12, 0x11, 0x2e,
-	0x70, 0x62, 0x2e, 0x4f, 0x6f, 0x42, 0x77, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x71,
-	0x1a, 0x0a, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x70, 0x6c, 0x61, 0x79, 0x42, 0x05, 0x5a, 0x03,
-	0x70, 0x62, 0x2f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x52, 0x08, 0x6e, 0x6f, 0x64, 0x65, 0x6c, 0x69, 0x73, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x77, 0x69,
+	0x64, 0x74, 0x68, 0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05, 0x77, 0x69, 0x64, 0x74, 0x68,
+	0x12, 0x12, 0x0a, 0x04, 0x70, 0x6f, 0x72, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04,
+	0x70, 0x6f, 0x72, 0x74, 0x22, 0x25, 0x0a, 0x09, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x52, 0x65,
+	0x71, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x22, 0x1c, 0x0a, 0x0a, 0x43,
+	0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x12, 0x0e, 0x0a, 0x02, 0x6f, 0x6b, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x02, 0x6f, 0x6b, 0x32, 0x84, 0x01, 0x0a, 0x0a, 0x52, 0x70,
+	0x63, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x2c, 0x0a, 0x09, 0x50, 0x75, 0x74, 0x53,
+	0x74, 0x72, 0x65, 0x61, 0x6d, 0x12, 0x10, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x75, 0x74, 0x53, 0x74,
+	0x72, 0x65, 0x61, 0x6d, 0x52, 0x65, 0x71, 0x1a, 0x09, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x70,
+	0x6c, 0x79, 0x28, 0x01, 0x30, 0x01, 0x12, 0x21, 0x0a, 0x06, 0x52, 0x75, 0x6e, 0x43, 0x6d, 0x64,
+	0x12, 0x0a, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x6d, 0x64, 0x52, 0x65, 0x71, 0x1a, 0x09, 0x2e, 0x70,
+	0x62, 0x2e, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x30, 0x01, 0x12, 0x25, 0x0a, 0x04, 0x50, 0x69, 0x6e,
+	0x67, 0x12, 0x0d, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x52, 0x65, 0x71,
+	0x1a, 0x0e, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70,
+	0x42, 0x05, 0x5a, 0x03, 0x70, 0x62, 0x2f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -724,37 +449,26 @@ func file_stream_proto_rawDescGZIP() []byte {
 	return file_stream_proto_rawDescData
 }
 
-var file_stream_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_stream_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_stream_proto_goTypes = []interface{}{
-	(*PutStreamReq)(nil),  // 0: pb.PutStreamReq
-	(*Node)(nil),          // 1: pb.Node
-	(*PutStreamResp)(nil), // 2: pb.PutStreamResp
-	(*Replay)(nil),        // 3: pb.Replay
-	(*CmdReq)(nil),        // 4: pb.CmdReq
-	(*GG)(nil),            // 5: pb.GG
-	(*OoBwServerReq)(nil), // 6: pb.OoBwServerReq
-	(*OoBwClientReq)(nil), // 7: pb.OoBwClientReq
+	(*PutStreamReq)(nil), // 0: pb.PutStreamReq
+	(*Reply)(nil),        // 1: pb.Reply
+	(*CmdReq)(nil),       // 2: pb.CmdReq
+	(*CommonReq)(nil),    // 3: pb.CommonReq
+	(*CommonResp)(nil),   // 4: pb.CommonResp
 }
 var file_stream_proto_depIdxs = []int32{
-	1, // 0: pb.Node.nodes:type_name -> pb.Node
-	3, // 1: pb.PutStreamResp.replay:type_name -> pb.Replay
-	0, // 2: pb.RpcService.PutStream:input_type -> pb.PutStreamReq
-	4, // 3: pb.RpcService.RunCmd:input_type -> pb.CmdReq
-	5, // 4: pb.RpcService.Ping:input_type -> pb.GG
-	5, // 5: pb.RpcService.GetNcid:input_type -> pb.GG
-	6, // 6: pb.RpcService.RunOoBwServer:input_type -> pb.OoBwServerReq
-	7, // 7: pb.RpcService.RunOoBwClient:input_type -> pb.OoBwClientReq
-	3, // 8: pb.RpcService.PutStream:output_type -> pb.Replay
-	2, // 9: pb.RpcService.RunCmd:output_type -> pb.PutStreamResp
-	5, // 10: pb.RpcService.Ping:output_type -> pb.GG
-	3, // 11: pb.RpcService.GetNcid:output_type -> pb.Replay
-	3, // 12: pb.RpcService.RunOoBwServer:output_type -> pb.Replay
-	3, // 13: pb.RpcService.RunOoBwClient:output_type -> pb.Replay
-	8, // [8:14] is the sub-list for method output_type
-	2, // [2:8] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0, // 0: pb.RpcService.PutStream:input_type -> pb.PutStreamReq
+	2, // 1: pb.RpcService.RunCmd:input_type -> pb.CmdReq
+	3, // 2: pb.RpcService.Ping:input_type -> pb.CommonReq
+	1, // 3: pb.RpcService.PutStream:output_type -> pb.Reply
+	1, // 4: pb.RpcService.RunCmd:output_type -> pb.Reply
+	4, // 5: pb.RpcService.Ping:output_type -> pb.CommonResp
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_stream_proto_init() }
@@ -776,7 +490,7 @@ func file_stream_proto_init() {
 			}
 		}
 		file_stream_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Node); i {
+			switch v := v.(*Reply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -788,30 +502,6 @@ func file_stream_proto_init() {
 			}
 		}
 		file_stream_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PutStreamResp); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_stream_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Replay); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_stream_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CmdReq); i {
 			case 0:
 				return &v.state
@@ -823,8 +513,8 @@ func file_stream_proto_init() {
 				return nil
 			}
 		}
-		file_stream_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GG); i {
+		file_stream_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*CommonReq); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -835,20 +525,8 @@ func file_stream_proto_init() {
 				return nil
 			}
 		}
-		file_stream_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*OoBwServerReq); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_stream_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*OoBwClientReq); i {
+		file_stream_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*CommonResp); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -866,7 +544,7 @@ func file_stream_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_stream_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
@@ -893,11 +571,8 @@ const _ = grpc.SupportPackageIsVersion6
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type RpcServiceClient interface {
 	PutStream(ctx context.Context, opts ...grpc.CallOption) (RpcService_PutStreamClient, error)
-	RunCmd(ctx context.Context, in *CmdReq, opts ...grpc.CallOption) (*PutStreamResp, error)
-	Ping(ctx context.Context, in *GG, opts ...grpc.CallOption) (*GG, error)
-	GetNcid(ctx context.Context, in *GG, opts ...grpc.CallOption) (*Replay, error)
-	RunOoBwServer(ctx context.Context, in *OoBwServerReq, opts ...grpc.CallOption) (*Replay, error)
-	RunOoBwClient(ctx context.Context, in *OoBwClientReq, opts ...grpc.CallOption) (*Replay, error)
+	RunCmd(ctx context.Context, in *CmdReq, opts ...grpc.CallOption) (RpcService_RunCmdClient, error)
+	Ping(ctx context.Context, in *CommonReq, opts ...grpc.CallOption) (*CommonResp, error)
 }
 
 type rpcServiceClient struct {
@@ -919,7 +594,7 @@ func (c *rpcServiceClient) PutStream(ctx context.Context, opts ...grpc.CallOptio
 
 type RpcService_PutStreamClient interface {
 	Send(*PutStreamReq) error
-	Recv() (*Replay, error)
+	Recv() (*Reply, error)
 	grpc.ClientStream
 }
 
@@ -931,53 +606,49 @@ func (x *rpcServicePutStreamClient) Send(m *PutStreamReq) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *rpcServicePutStreamClient) Recv() (*Replay, error) {
-	m := new(Replay)
+func (x *rpcServicePutStreamClient) Recv() (*Reply, error) {
+	m := new(Reply)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *rpcServiceClient) RunCmd(ctx context.Context, in *CmdReq, opts ...grpc.CallOption) (*PutStreamResp, error) {
-	out := new(PutStreamResp)
-	err := c.cc.Invoke(ctx, "/pb.RpcService/RunCmd", in, out, opts...)
+func (c *rpcServiceClient) RunCmd(ctx context.Context, in *CmdReq, opts ...grpc.CallOption) (RpcService_RunCmdClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_RpcService_serviceDesc.Streams[1], "/pb.RpcService/RunCmd", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &rpcServiceRunCmdClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
-func (c *rpcServiceClient) Ping(ctx context.Context, in *GG, opts ...grpc.CallOption) (*GG, error) {
-	out := new(GG)
+type RpcService_RunCmdClient interface {
+	Recv() (*Reply, error)
+	grpc.ClientStream
+}
+
+type rpcServiceRunCmdClient struct {
+	grpc.ClientStream
+}
+
+func (x *rpcServiceRunCmdClient) Recv() (*Reply, error) {
+	m := new(Reply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *rpcServiceClient) Ping(ctx context.Context, in *CommonReq, opts ...grpc.CallOption) (*CommonResp, error) {
+	out := new(CommonResp)
 	err := c.cc.Invoke(ctx, "/pb.RpcService/Ping", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *rpcServiceClient) GetNcid(ctx context.Context, in *GG, opts ...grpc.CallOption) (*Replay, error) {
-	out := new(Replay)
-	err := c.cc.Invoke(ctx, "/pb.RpcService/GetNcid", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *rpcServiceClient) RunOoBwServer(ctx context.Context, in *OoBwServerReq, opts ...grpc.CallOption) (*Replay, error) {
-	out := new(Replay)
-	err := c.cc.Invoke(ctx, "/pb.RpcService/RunOoBwServer", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *rpcServiceClient) RunOoBwClient(ctx context.Context, in *OoBwClientReq, opts ...grpc.CallOption) (*Replay, error) {
-	out := new(Replay)
-	err := c.cc.Invoke(ctx, "/pb.RpcService/RunOoBwClient", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -987,11 +658,8 @@ func (c *rpcServiceClient) RunOoBwClient(ctx context.Context, in *OoBwClientReq,
 // RpcServiceServer is the server API for RpcService service.
 type RpcServiceServer interface {
 	PutStream(RpcService_PutStreamServer) error
-	RunCmd(context.Context, *CmdReq) (*PutStreamResp, error)
-	Ping(context.Context, *GG) (*GG, error)
-	GetNcid(context.Context, *GG) (*Replay, error)
-	RunOoBwServer(context.Context, *OoBwServerReq) (*Replay, error)
-	RunOoBwClient(context.Context, *OoBwClientReq) (*Replay, error)
+	RunCmd(*CmdReq, RpcService_RunCmdServer) error
+	Ping(context.Context, *CommonReq) (*CommonResp, error)
 }
 
 // UnimplementedRpcServiceServer can be embedded to have forward compatible implementations.
@@ -1001,20 +669,11 @@ type UnimplementedRpcServiceServer struct {
 func (*UnimplementedRpcServiceServer) PutStream(RpcService_PutStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method PutStream not implemented")
 }
-func (*UnimplementedRpcServiceServer) RunCmd(context.Context, *CmdReq) (*PutStreamResp, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RunCmd not implemented")
+func (*UnimplementedRpcServiceServer) RunCmd(*CmdReq, RpcService_RunCmdServer) error {
+	return status.Errorf(codes.Unimplemented, "method RunCmd not implemented")
 }
-func (*UnimplementedRpcServiceServer) Ping(context.Context, *GG) (*GG, error) {
+func (*UnimplementedRpcServiceServer) Ping(context.Context, *CommonReq) (*CommonResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
-}
-func (*UnimplementedRpcServiceServer) GetNcid(context.Context, *GG) (*Replay, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetNcid not implemented")
-}
-func (*UnimplementedRpcServiceServer) RunOoBwServer(context.Context, *OoBwServerReq) (*Replay, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RunOoBwServer not implemented")
-}
-func (*UnimplementedRpcServiceServer) RunOoBwClient(context.Context, *OoBwClientReq) (*Replay, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RunOoBwClient not implemented")
 }
 
 func RegisterRpcServiceServer(s *grpc.Server, srv RpcServiceServer) {
@@ -1026,7 +685,7 @@ func _RpcService_PutStream_Handler(srv interface{}, stream grpc.ServerStream) er
 }
 
 type RpcService_PutStreamServer interface {
-	Send(*Replay) error
+	Send(*Reply) error
 	Recv() (*PutStreamReq, error)
 	grpc.ServerStream
 }
@@ -1035,7 +694,7 @@ type rpcServicePutStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *rpcServicePutStreamServer) Send(m *Replay) error {
+func (x *rpcServicePutStreamServer) Send(m *Reply) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -1047,26 +706,29 @@ func (x *rpcServicePutStreamServer) Recv() (*PutStreamReq, error) {
 	return m, nil
 }
 
-func _RpcService_RunCmd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CmdReq)
-	if err := dec(in); err != nil {
-		return nil, err
+func _RpcService_RunCmd_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(CmdReq)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(RpcServiceServer).RunCmd(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.RpcService/RunCmd",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RpcServiceServer).RunCmd(ctx, req.(*CmdReq))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(RpcServiceServer).RunCmd(m, &rpcServiceRunCmdServer{stream})
+}
+
+type RpcService_RunCmdServer interface {
+	Send(*Reply) error
+	grpc.ServerStream
+}
+
+type rpcServiceRunCmdServer struct {
+	grpc.ServerStream
+}
+
+func (x *rpcServiceRunCmdServer) Send(m *Reply) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _RpcService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GG)
+	in := new(CommonReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1078,61 +740,7 @@ func _RpcService_Ping_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: "/pb.RpcService/Ping",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RpcServiceServer).Ping(ctx, req.(*GG))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _RpcService_GetNcid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GG)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RpcServiceServer).GetNcid(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.RpcService/GetNcid",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RpcServiceServer).GetNcid(ctx, req.(*GG))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _RpcService_RunOoBwServer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(OoBwServerReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RpcServiceServer).RunOoBwServer(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.RpcService/RunOoBwServer",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RpcServiceServer).RunOoBwServer(ctx, req.(*OoBwServerReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _RpcService_RunOoBwClient_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(OoBwClientReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RpcServiceServer).RunOoBwClient(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.RpcService/RunOoBwClient",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RpcServiceServer).RunOoBwClient(ctx, req.(*OoBwClientReq))
+		return srv.(RpcServiceServer).Ping(ctx, req.(*CommonReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1142,24 +750,8 @@ var _RpcService_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*RpcServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "RunCmd",
-			Handler:    _RpcService_RunCmd_Handler,
-		},
-		{
 			MethodName: "Ping",
 			Handler:    _RpcService_Ping_Handler,
-		},
-		{
-			MethodName: "GetNcid",
-			Handler:    _RpcService_GetNcid_Handler,
-		},
-		{
-			MethodName: "RunOoBwServer",
-			Handler:    _RpcService_RunOoBwServer_Handler,
-		},
-		{
-			MethodName: "RunOoBwClient",
-			Handler:    _RpcService_RunOoBwClient_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
@@ -1168,6 +760,11 @@ var _RpcService_serviceDesc = grpc.ServiceDesc{
 			Handler:       _RpcService_PutStream_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
+		},
+		{
+			StreamName:    "RunCmd",
+			Handler:       _RpcService_RunCmd_Handler,
+			ServerStreams: true,
 		},
 	},
 	Metadata: "stream.proto",

@@ -16,23 +16,11 @@ import (
 	"myclush/utils"
 )
 
-func newReplay(pass bool, msg, nodeList string) *pb.Replay {
-	return &pb.Replay{
-		Pass:     pass,
-		Msg:      msg,
-		Nodelist: nodeList,
-	}
-}
-
-func newPutStreamResp(replay []*pb.Replay) *pb.PutStreamResp {
-	return &pb.PutStreamResp{Replay: replay}
-}
-
 type Wrapper interface {
 	SetBad()
 	Send([]byte) error
 	SendFromChannel()
-	DiscribeReplaiesChannel(replaiesChannel chan *pb.Replay)
+	DiscribeRepliesChannel(repliesChannel chan *pb.Reply)
 	GetAllNodelist() string
 	RecvData(data []byte)
 	GetBatchNode() string
@@ -42,14 +30,14 @@ type Wrapper interface {
 }
 
 type LocalWriterWrapper struct {
-	fp              string
-	f               *os.File
-	dataChan        chan []byte
-	replaiesChannel chan *pb.Replay
-	Ok              atomic.Value
-	wg              *sync.WaitGroup
-	ctx             context.Context
-	err             error
+	fp             string
+	f              *os.File
+	dataChan       chan []byte
+	repliesChannel chan *pb.Reply
+	Ok             atomic.Value
+	wg             *sync.WaitGroup
+	ctx            context.Context
+	err            error
 }
 
 func newLocalWriterWrapper(ctx context.Context, data *pb.PutStreamReq, tmpDir string, wg *sync.WaitGroup) (*LocalWriterWrapper, error) {
@@ -80,8 +68,8 @@ func newLocalWriterWrapper(ctx context.Context, data *pb.PutStreamReq, tmpDir st
 	return r, nil
 }
 
-func (l *LocalWriterWrapper) DiscribeReplaiesChannel(replaiesChannel chan *pb.Replay) {
-	l.replaiesChannel = replaiesChannel
+func (l *LocalWriterWrapper) DiscribeRepliesChannel(repliesChannel chan *pb.Reply) {
+	l.repliesChannel = repliesChannel
 }
 
 func (l *LocalWriterWrapper) SetBad() {
@@ -112,9 +100,9 @@ func (l *LocalWriterWrapper) SendFromChannel() {
 	defer func() {
 		err := l.CloseAndRecv()
 		if err != nil {
-			l.replaiesChannel <- newReplay(false, err.Error(), LocalNode)
+			l.repliesChannel <- newReply(false, err.Error(), LocalNode)
 		} else {
-			l.replaiesChannel <- newReplay(true, "Success", LocalNode)
+			l.repliesChannel <- newReply(true, "Success", LocalNode)
 		}
 	}()
 	cnt := 0

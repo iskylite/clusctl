@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"myclush/pb"
 	"os"
+	"os/user"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -76,10 +77,10 @@ func ConvertSize(size string) (int, error) {
 	return blockSize, nil
 }
 
-func DataAggregation(replay []*pb.Replay) (sync.Map, sync.Map) {
+func DataAggregation(replay []*pb.Reply) (sync.Map, sync.Map) {
 	dataPassMap := sync.Map{}
 	dataFailMap := sync.Map{}
-	replayChan := make(chan *pb.Replay, runtime.NumCPU())
+	replayChan := make(chan *pb.Reply, runtime.NumCPU())
 	go func() {
 		defer close(replayChan)
 		for _, r := range replay {
@@ -112,4 +113,15 @@ func DataAggregation(replay []*pb.Replay) (sync.Map, sync.Map) {
 		}
 	}
 	return dataPassMap, dataFailMap
+}
+
+func UserInfo() (string, string, error) {
+	var uid, gid string
+	userInfo, err := user.Current()
+	if err != nil {
+		return uid, gid, err
+	}
+	uid = userInfo.Uid
+	gid = userInfo.Gid
+	return uid, gid, nil
 }

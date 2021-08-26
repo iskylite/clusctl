@@ -2,12 +2,15 @@ package service
 
 import (
 	"context"
+	"myclush/global"
 	log "myclush/logger"
 	"myclush/pb"
-	"myclush/utils"
 )
 
-func (p *putStreamServer) Ping(ctx context.Context, gg *pb.GG) (*pb.GG, error) {
-	log.Debugf("Service Ping From [%s]\n", gg.GetHH())
-	return &pb.GG{HH: utils.Hostname()}, nil
+func (p *putStreamServer) Ping(ctx context.Context, req *pb.CommonReq) (*pb.CommonResp, error) {
+	if req.GetVersion() == global.Version {
+		return &pb.CommonResp{Ok: true}, nil
+	}
+	log.Errorf("[ping] server: %s, client: %s\n", global.Version, req.GetVersion())
+	return &pb.CommonResp{Ok: false}, nil
 }
