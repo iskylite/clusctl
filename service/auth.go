@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"myclush/global"
 	"myclush/logger"
 	"myclush/utils"
 	"os"
@@ -12,9 +13,28 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+// CLientTLS
+func GenClientTransportCredentials() (grpc.DialOption, error) {
+	creds, err := credentials.NewClientTLSFromFile(global.CertPemPath, "myclush.com")
+	if err != nil {
+		return grpc.EmptyDialOption{}, err
+	}
+	return grpc.WithTransportCredentials(creds), nil
+}
+
+// server TLS
+func GenServerTransportCredentials() (grpc.ServerOption, error) {
+	creds, err := credentials.NewServerTLSFromFile(global.CertPemPath, global.CertKeyPath)
+	if err != nil {
+		return grpc.EmptyServerOption{}, err
+	}
+	return grpc.Creds(creds), nil
+}
 
 // 一元拦截器
 func unaryServerInterceptor() grpc.UnaryServerInterceptor {
@@ -112,19 +132,44 @@ func getAuthorityByContext(ctx context.Context) (string, error) {
 		err := errors.New("no metadata")
 		return sshKey, err
 	}
-	sshKeys, ok := md[":authority"]
+	logger.Debug(md)
+	sshKeys, ok := md["token"]
 	if !ok {
-		err := errors.New("no authority")
+		err := errors.New("no ssh token")
 		return sshKey, err
 	}
 	sshKey = sshKeys[0]
 	return sshKey, nil
 }
 
+// when tls, authority not work
 func SetAuthority() (grpc.DialOption, error) {
 	sshKeys, err := LocalUserSSHKey()
 	if err != nil {
 		return grpc.EmptyDialOption{}, err
 	}
 	return grpc.WithAuthority(sshKeys), nil
+}
+
+// when tls, use grpc.WithPerRPCCredentials
+type authority struct {
+	sshKey string
+}
+
+// GetRequestMetadata 获取当前请求认证所需的元数据（metadata）
+func (a *authority) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	return map[string]string{"token": a.sshKey}, nil
+}
+
+// RequireTransportSecurity 是否需要基于 TLS 认证进行安全传输
+func (a *authority) RequireTransportSecurity() bool {
+	return true
+}
+
+func SetAuthorityMetadata() (grpc.DialOption, error) {
+	sshKey, err := LocalUserSSHKey()
+	if err != nil {
+		return nil, err
+	}
+	return grpc.WithPerRPCCredentials(&authority{sshKey: sshKey}), nil
 }

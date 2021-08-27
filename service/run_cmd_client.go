@@ -67,7 +67,7 @@ func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []strin
 func checkConn(ctx context.Context, node string, req *pb.CmdReq, grpcOptions, authority grpc.DialOption) (*grpc.ClientConn, pb.RpcService_RunCmdClient, error) {
 	addr := fmt.Sprintf("%s:%s", node, req.Port)
 	// dial
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpcOptions, authority)
+	conn, err := grpc.DialContext(ctx, addr, grpcOptions, authority, global.ClientTransportCredentials)
 	if err != nil {
 		logger.Error(err)
 		return nil, nil, err
@@ -191,7 +191,7 @@ func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cm
 					return true
 				})
 				idleNodes := utils.Merge(idle...)
-				log.Infof("\rProgress Replies: %s\n", idleNodes)
+				log.Infof("\r等待结果: %s\n", idleNodes)
 			}
 		}
 	}()
@@ -204,12 +204,12 @@ func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cm
 	go func() {
 		defer waitc.Done()
 		for reply := range repliesChannel {
-			fmt.Printf("\rResponse  Replies: %d/%d", cnt, client.num)
+			fmt.Printf("\r结果汇总: %d/%d", cnt, client.num)
 			resps = append(resps, reply)
 			resOriginMap.Store(reply.Nodelist, true)
 			cnt++
 		}
-		fmt.Printf("\rResponse  Replies: %d/%d %s\n", cnt, client.num, log.ColorWrapper("EOF", log.Success))
+		fmt.Printf("\r结果汇总: %d/%d %s\n", cnt, client.num, log.ColorWrapper("EOF", log.Success))
 	}()
 	// client reply
 	for _, node := range down {

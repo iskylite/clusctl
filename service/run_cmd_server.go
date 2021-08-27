@@ -12,8 +12,8 @@ import (
 
 func (p *putStreamServer) RunCmd(req *pb.CmdReq, stream pb.RpcService_RunCmdServer) error {
 	// get authority
-	authorityStr, _ := getAuthorityByContext(stream.Context())
-	authority := grpc.WithAuthority(authorityStr)
+	token, _ := getAuthorityByContext(stream.Context())
+	perRPCCredentials := grpc.WithPerRPCCredentials(&authority{sshKey: token})
 	// init base args
 	splitNodes := utils.SplitNodesByWidth(utils.ExpNodes(req.Nodelist), req.Width)
 	log.Debug(splitNodes)
@@ -61,7 +61,8 @@ func (p *putStreamServer) RunCmd(req *pb.CmdReq, stream pb.RpcService_RunCmdServ
 		go func(nodes []string) {
 			defer wg.Done()
 			log.Debugf("Setup RunCmdClientService For %s\n", nodes[0])
-			client, down, err := newRunCmdClientService(ctx, req.Cmd, req.Port, nodes, req.Width, authority)
+			client, down, err := newRunCmdClientService(ctx, req.Cmd, req.Port, nodes,
+				req.Width, perRPCCredentials)
 			if err != nil {
 				repliesChannel <- newReply(false, err.Error(), utils.Merge(nodes...))
 				return

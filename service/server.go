@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"myclush/global"
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
@@ -53,7 +54,7 @@ func (p *putStreamServer) RunServer(port string) error {
 	if err != nil {
 		return err
 	}
-	p.grpcServer = grpc.NewServer(grpc.UnaryInterceptor(unaryServerInterceptor()), grpc.StreamInterceptor(streamServerInterceptor()))
+	p.grpcServer = grpc.NewServer(global.ServerTransportCredentials, grpc.UnaryInterceptor(unaryServerInterceptor()), grpc.StreamInterceptor(streamServerInterceptor()))
 	pb.RegisterRpcServiceServer(p.grpcServer, p)
 	err = p.grpcServer.Serve(conn)
 	if err != nil {

@@ -10,8 +10,13 @@ const (
 	Email        string = "yantao0905@outlook.com"
 	Descriptions string = "cluster manager tools by grpc service"
 	Success      string = "Success"
+	// cert path
+	CertKeyPath string = "./conf/cert.key"
+	CertPemPath string = "./conf/cert.pem"
 )
 
 var (
-	Authority grpc.DialOption
+	Authority                  grpc.DialOption
+	ClientTransportCredentials grpc.DialOption
+	ServerTransportCredentials grpc.ServerOption
 )

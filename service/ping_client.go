@@ -41,7 +41,8 @@ func (p *PingClientService) Ping(ctx context.Context, node string) {
 	addr := fmt.Sprintf("%s:%s", node, p.port)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(p.timeout))
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithBlock(), grpc.WithInsecure(), global.Authority)
+	conn, err := grpc.DialContext(ctx, addr, global.ClientTransportCredentials, global.Authority)
+	// conn, err := grpc.DialContext(ctx, addr, grpc.WithBlock(), grpc.WithInsecure(), global.Authority)
 	defer func() {
 		if conn == nil {
 			return

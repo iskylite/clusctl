@@ -120,7 +120,7 @@ func (p *PutStreamClientService) checkConn(ctx context.Context, node string, aut
 	go func() {
 		defer close(waitc)
 		addr := fmt.Sprintf("%s:%s", node, p.port)
-		conn, err = grpc.DialContext(ctx, addr, grpc.WithInsecure(), authority)
+		conn, err = grpc.DialContext(ctx, addr, authority, global.ClientTransportCredentials)
 		if err != nil {
 			logger.Error(err)
 			return
@@ -309,7 +309,7 @@ func PutStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, 
 					return true
 				})
 				idleNodes := utils.Merge(idle...)
-				fmt.Printf("\r: %s\n", idleNodes)
+				fmt.Printf("\r等待结果: %s\n", idleNodes)
 			}
 		}
 	}()

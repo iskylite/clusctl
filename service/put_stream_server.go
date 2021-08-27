@@ -18,8 +18,8 @@ import (
 
 func (p *putStreamServer) PutStream(stream pb.RpcService_PutStreamServer) error {
 	// get authority
-	authorityStr, _ := getAuthorityByContext(stream.Context())
-	authority := grpc.WithAuthority(authorityStr)
+	token, _ := getAuthorityByContext(stream.Context())
+	perRPCCredentials := grpc.WithPerRPCCredentials(&authority{sshKey: token})
 	cnt := 0
 	var once sync.Once
 	var wg sync.WaitGroup
@@ -96,7 +96,7 @@ LOOP:
 					}
 					addr := fmt.Sprintf("%s:%s", nodes[0], data.Port)
 					// 只要有一个连接成功就不会返回错误
-					stream, down, err := newStreamWrapper(ctx, data.Name, data.Location, data.Port, nodes, data.Width, &wg, authority)
+					stream, down, err := newStreamWrapper(ctx, data.Name, data.Location, data.Port, nodes, data.Width, &wg, perRPCCredentials)
 					if err != nil {
 						log.Errorf("Server Stream Client [%s] Setup Failed\n", addr)
 						repliesChannel <- newReply(false,
