@@ -10,7 +10,6 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
-cmd/*
 *clush*
 .fuse_hidder*
 conf/cert.*
