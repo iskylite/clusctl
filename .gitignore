@@ -13,3 +13,4 @@
 cmd/*
 *clush*
 .fuse_hidder*
+conf/cert.*
