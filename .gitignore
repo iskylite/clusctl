@@ -13,3 +13,5 @@
 *clush*
 .fuse_hidder*
 conf/cert.*
+.vscode
+.idea
