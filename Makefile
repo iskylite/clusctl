@@ -10,7 +10,7 @@ build:
 	go build -o ${APP} cmd/client/*.go
 	go build -o ${APP}d cmd/server/*.go
 arm:
-	GOOS=linux GOARCH=arm64 go -o ${APP}-arm64 build cmd/client/*.go
+	GOOS=linux GOARCH=arm64 go build -o ${APP}-arm64 cmd/client/*.go
 	GOOS=linux GOARCH=arm64 go build -o ${APP}d-arm64 cmd/server/*.go
 
 clean:

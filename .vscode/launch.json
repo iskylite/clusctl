@@ -8,14 +8,10 @@
             "name": "Launch Package",
             "type": "go",
             "request": "launch",
-            "mode": "debug",
+            "mode": "auto",
             "program": "${fileDirname}",
             "args": [
-                "-e",
-                "hostname",
-                "-n",
-                "vm0",
-                "-D"
+                "-d"
             ]
         }
     ]

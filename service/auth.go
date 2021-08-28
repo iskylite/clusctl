@@ -132,7 +132,6 @@ func getAuthorityByContext(ctx context.Context) (string, error) {
 		err := errors.New("no metadata")
 		return sshKey, err
 	}
-	logger.Debug(md)
 	sshKeys, ok := md["token"]
 	if !ok {
 		err := errors.New("no ssh token")

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"myclush/global"
-	"myclush/logger"
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
@@ -69,7 +68,7 @@ func checkConn(ctx context.Context, node string, req *pb.CmdReq, grpcOptions, au
 	// dial
 	conn, err := grpc.DialContext(ctx, addr, grpcOptions, authority, global.ClientTransportCredentials)
 	if err != nil {
-		logger.Error(err)
+		log.Error(err)
 		return nil, nil, err
 	}
 	// runcmd
@@ -87,7 +86,7 @@ func checkConn(ctx context.Context, node string, req *pb.CmdReq, grpcOptions, au
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Debugf("connect timeout for %s\n", node)
+			log.Errorf("connect timeout for %s\n", node)
 			if conn != nil {
 				conn.Close()
 			}
@@ -129,7 +128,7 @@ func (r *RunCmdClientService) RunCmd() {
 
 func (r *RunCmdClientService) CloseConn() {
 	r.conn.Close()
-	logger.Debugf("close conn %s\n", r.node)
+	log.Debugf("close conn %s\n", r.node)
 }
 
 func (r *RunCmdClientService) Gather(Reply []*pb.Reply, nodelist string, flag bool) {

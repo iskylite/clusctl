@@ -33,6 +33,7 @@ func (p *putStreamServer) PutStream(stream pb.RpcService_PutStreamServer) error 
 		log.Info("stop putStream server")
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	log.Debug("PutStream Server Start ... ")
 	// 响应值通道
 	repliesChannel := make(chan *pb.Reply, runtime.NumCPU())

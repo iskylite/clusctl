@@ -136,12 +136,6 @@ var (
 		Usage:   "B+ tree width for executing command",
 		Value:   50,
 	}
-	execFlagForTimeout *cli.IntFlag = &cli.IntFlag{
-		Name:    "ut",
-		Aliases: []string{"u"},
-		Usage:   "command tasks timeout for B+ tree, if u is 0, never timeout",
-		Value:   0,
-	}
 	execFlagForList *cli.BoolFlag = &cli.BoolFlag{
 		Name:    "list",
 		Aliases: []string{"l"},
@@ -205,7 +199,6 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 func setLogLevel(debug bool) {
 	if debug {
 		log.SetLevel(log.DEBUG)
-		log.Debug("Logger Setup In DEBUG Mode")
 	} else {
 		log.SetSilent()
 	}
@@ -214,6 +207,9 @@ func setLogLevel(debug bool) {
 func Before(c *cli.Context) error {
 	// log debug
 	setLogLevel(c.Bool("debug"))
+	if c.String("nodes") == "" {
+		return errors.New("flag \"--nodes\" or \"-r\" not provide")
+	}
 	// root privileges
 	uid, gid, err := utils.UserInfo()
 	if err != nil {

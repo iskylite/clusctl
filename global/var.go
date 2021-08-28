@@ -11,8 +11,8 @@ const (
 	Descriptions string = "cluster manager tools by grpc service"
 	Success      string = "Success"
 	// cert path
-	CertKeyPath string = "./conf/cert.key"
-	CertPemPath string = "./conf/cert.pem"
+	CertKeyPath string = "/var/lib/myclushd/cert.key"
+	CertPemPath string = "/var/lib/myclushd/cert.pem"
 )
 
 var (

@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"myclush/logger"
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
@@ -87,7 +86,7 @@ func (l *LocalWriterWrapper) Send(data []byte) error {
 }
 
 func (l *LocalWriterWrapper) CloseConn() {
-	logger.Debugf("close conn local\n")
+	log.Debugf("close conn local\n")
 }
 
 func (l *LocalWriterWrapper) IsLocal() bool {

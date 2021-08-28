@@ -16,7 +16,6 @@ func (p *putStreamServer) RunCmd(req *pb.CmdReq, stream pb.RpcService_RunCmdServ
 	perRPCCredentials := grpc.WithPerRPCCredentials(&authority{sshKey: token})
 	// init base args
 	splitNodes := utils.SplitNodesByWidth(utils.ExpNodes(req.Nodelist), req.Width)
-	log.Debug(splitNodes)
 	repliesChannel := make(chan *pb.Reply)
 	// replies handle
 	var waitc sync.WaitGroup
@@ -43,18 +42,18 @@ func (p *putStreamServer) RunCmd(req *pb.CmdReq, stream pb.RpcService_RunCmdServ
 		defer wg.Done()
 		out, ok := utils.ExecuteShellCmdWithContext(ctx, req.Cmd)
 		if !ok {
-			log.Errorf("Finish Command %s, Err =\n %s", req.Cmd, string(out))
+			log.Errorf("Finish Command %s, Err =\n\t[%s]", req.Cmd, string(out))
 			repliesChannel <- newReply(false, out, localNode)
 			return
 		}
-		log.Debugf("Finish Command %s, Out =\n %s", req.Cmd, string(out))
+		log.Debugf("Finish Command %s, Out =\n\t[%s]", req.Cmd, string(out))
 		repliesChannel <- newReply(true, string(out), localNode)
 	}()
 
 	// remote client RunCmd
 	log.Debugf("Start Client Job...")
 	for _, nodes := range splitNodes {
-		if len(nodes) < 0 {
+		if len(nodes) == 0 {
 			continue
 		}
 		wg.Add(1)

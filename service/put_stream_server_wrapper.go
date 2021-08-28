@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"myclush/logger"
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
@@ -109,7 +108,7 @@ func (s *StreamWrapper) SendFromChannel() {
 			break
 		}
 		if err := s.Send(data); err != nil {
-			logger.Error(err)
+			log.Error(err)
 			s.SetBad()
 			s.repliesChannel <- newReply(false, utils.GrpcErrorMsg(err), s.GetAllNodelist())
 			break

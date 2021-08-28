@@ -8,7 +8,6 @@ import (
 	"io"
 	"math"
 	"myclush/global"
-	"myclush/logger"
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
@@ -106,7 +105,7 @@ func (p *PutStreamClientService) GetStream() pb.RpcService_PutStreamClient {
 }
 
 func (p *PutStreamClientService) CloseConn() {
-	logger.Debugf("close conn %s\n", p.node)
+	log.Debugf("close conn %s\n", p.node)
 	p.conn.Close()
 }
 
@@ -122,20 +121,20 @@ func (p *PutStreamClientService) checkConn(ctx context.Context, node string, aut
 		addr := fmt.Sprintf("%s:%s", node, p.port)
 		conn, err = grpc.DialContext(ctx, addr, authority, global.ClientTransportCredentials)
 		if err != nil {
-			logger.Error(err)
+			log.Error(err)
 			return
 		}
 		client := pb.NewRpcServiceClient(conn)
 		stream, err = client.PutStream(ctx)
 		if err != nil {
-			logger.Error(err)
+			log.Error(err)
 			return
 		}
 		log.Debugf("Gen client stream -> %s\n", addr)
 	}()
 	select {
 	case <-tctx.Done():
-		logger.Debugf("connect timeout for %s\n", node)
+		log.Errorf("connect timeout for %s\n", node)
 		return nil, nil, errors.New("timeout")
 	case <-waitc:
 		if err != nil {
