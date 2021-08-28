@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"io"
 	log "myclush/logger"
 	"myclush/pb"
@@ -14,6 +13,8 @@ import (
 	"runtime"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type StreamWrapper struct {
@@ -68,7 +69,7 @@ func (s *StreamWrapper) Send(body []byte) error {
 		}()
 		select {
 		case <-ctx.Done():
-			err = errors.New("send timeout")
+			err = status.Error(codes.DeadlineExceeded, "stream send timeout")
 		case <-waitc:
 
 		}

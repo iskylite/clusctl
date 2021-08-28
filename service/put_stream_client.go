@@ -3,7 +3,6 @@ package service
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -21,6 +20,7 @@ import (
 
 	"github.com/iskylite/nodeset"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
@@ -135,10 +135,10 @@ func (p *PutStreamClientService) checkConn(ctx context.Context, node string, aut
 	select {
 	case <-tctx.Done():
 		log.Errorf("connect timeout for %s\n", node)
-		return nil, nil, errors.New("timeout")
+		return nil, nil, status.Error(codes.DeadlineExceeded, "connect timeout")
 	case <-waitc:
 		if err != nil {
-			return conn, stream, utils.GrpcErrorWrapper(err)
+			return conn, stream, err
 		}
 		return conn, stream, err
 	}

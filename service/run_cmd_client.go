@@ -3,7 +3,6 @@ package service
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"myclush/global"
@@ -16,7 +15,9 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/status"
 )
 
 type RunCmdClientService struct {
@@ -31,12 +32,12 @@ type RunCmdClientService struct {
 	repliesChannel chan *pb.Reply
 }
 
-func NewRunCmdClientService(ctx context.Context, cmd, nodelist, port string, width int32) (*RunCmdClientService, []string, error) {
+func NewRunCmdClientService(ctx context.Context, cmd, nodelist, port string, width int32, daemon bool) (*RunCmdClientService, []string, error) {
 	nodes := utils.ExpNodes(nodelist)
-	return newRunCmdClientService(ctx, cmd, port, nodes, width, global.Authority)
+	return newRunCmdClientService(ctx, cmd, port, nodes, width, global.Authority, daemon)
 }
 
-func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []string, width int32, authority grpc.DialOption) (*RunCmdClientService, []string, error) {
+func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []string, width int32, authority grpc.DialOption, daemon bool) (*RunCmdClientService, []string, error) {
 	nodesNum := len(nodes)
 	down := make([]string, 0)
 	var conn *grpc.ClientConn
@@ -48,7 +49,7 @@ func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []strin
 	for i := 0; i < nodesNum; i++ {
 		node := nodes[i]
 		nodelist := utils.Merge(nodes[i+1 : nodesNum]...)
-		req := &pb.CmdReq{Cmd: cmd, Nodelist: nodelist, Port: port, Width: width}
+		req := &pb.CmdReq{Cmd: cmd, Nodelist: nodelist, Port: port, Width: width, Daemon: daemon}
 		conn, stream, err = checkConn(ctx, node, req, grpcOptions, authority)
 		if err != nil {
 			down = append(down, node)
@@ -90,11 +91,11 @@ func checkConn(ctx context.Context, node string, req *pb.CmdReq, grpcOptions, au
 			if conn != nil {
 				conn.Close()
 			}
-			return nil, nil, errors.New("connect timeout")
+			return nil, nil, status.Error(codes.DeadlineExceeded, "connect timeout")
 		default:
 			if conn.GetState() == connectivity.Ready {
 				log.Debugf("Gen client stream -> %s\n", addr)
-				return conn, stream, utils.GrpcErrorWrapper(err)
+				return conn, stream, err
 			}
 		}
 	}
@@ -159,10 +160,10 @@ func (r *RunCmdClientService) Gather(Reply []*pb.Reply, nodelist string, flag bo
 	}
 }
 
-func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cmd, nodes string, width, port int, list bool) {
+func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cmd, nodes string, width, port int, list, daemon bool) {
 	defer cancel()
 	// establish conn and call remote cmd
-	client, down, err := NewRunCmdClientService(ctx, cmd, nodes, strconv.Itoa(port), int32(width))
+	client, down, err := NewRunCmdClientService(ctx, cmd, nodes, strconv.Itoa(port), int32(width), daemon)
 	if err != nil {
 		log.Error(err)
 		return

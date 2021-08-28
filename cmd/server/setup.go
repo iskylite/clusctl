@@ -48,12 +48,6 @@ var (
 		Value:   false,
 		Usage:   "run server on front",
 	}
-	globalFlagForRedriect *cli.BoolFlag = &cli.BoolFlag{
-		Name:    "redriect",
-		Aliases: []string{"r"},
-		Value:   false,
-		Usage:   "run server on front and log into /var/log/${APP}.log, comflict with front",
-	}
 )
 
 func run(ctx context.Context, cancel context.CancelFunc) error {
@@ -77,7 +71,6 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 			globalFlagForDebug,
 			globalFlagForPort,
 			globalFlagForFront,
-			globalFlagForRedriect,
 		},
 		Action: func(c *cli.Context) error {
 			if c.Bool("front") {
@@ -85,8 +78,8 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 				service.PutStreamServerServiceSetup(ctx, cancel, c.App.Name, port)
 				return nil
 			}
-			if c.Bool("redriect") {
-				// 前台运行输出结果到日志文件
+			if _, ok := os.LookupEnv("MYCLUSH_DAEMON"); ok {
+				// app运行在子进程中
 				// 日志重定向
 				logFile := filepath.Join("/var/log", c.App.Name+".log")
 				f, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
@@ -95,28 +88,22 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 				}
 				defer f.Close()
 				log.SetOutput(f)
-				log.Infof("%sd start \n", c.App.Name)
+				log.Infof("%s start \n", c.App.Name)
 				time.Sleep(2 * time.Second)
 				//运行
 				service.PutStreamServerServiceSetup(ctx, cancel, c.App.Name, port)
-				return nil
-			}
-			// 后台运行
-			// 重新设置命令行参数，删除-r/--redriect
-			args := make([]string, 0)
-			for _, arg := range os.Args {
-				if arg == "-r" || arg == "--redriect" {
-					continue
+			} else {
+				// 后台运行
+				env := os.Environ()
+				cmd := exec.Command(os.Args[0], os.Args[1:]...)
+				if _, ok := os.LookupEnv("HOME"); !ok {
+					env = append(env, "HOME=/root")
 				}
-				args = append(args, arg)
+				env = append(env, "MYCLUSH_DAEMON=on")
+				cmd.Env = env
+				return cmd.Start()
 			}
-			cmdName := args[0]
-			cmdArgs := []string{"-r"}
-			if len(args) > 1 {
-				cmdArgs = append(cmdArgs, args[1:]...)
-			}
-			cmd := exec.Command(cmdName, cmdArgs...)
-			return cmd.Start()
+			return nil
 		},
 	}
 

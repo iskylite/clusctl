@@ -105,7 +105,7 @@ LOOP:
 						continue
 					}
 					if len(down) > 0 {
-						repliesChannel <- newReply(false, "connect timeout or failed", utils.Merge(down...))
+						repliesChannel <- newReply(false, "rpc timeout or failed", utils.Merge(down...))
 					}
 					stream.SetFileInfo(data.Uid, data.Gid, data.Filemod, data.Modtime)
 					wg.Add(1)

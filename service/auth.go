@@ -63,8 +63,17 @@ func streamServerInterceptor() grpc.StreamServerInterceptor {
 	}
 }
 
-// 错误定义
-var ()
+// 依据ssh公钥认证
+func authBySSHKeys(ctx context.Context) error {
+	sshKey, err := getAuthorityByContext(ctx)
+	if err != nil {
+		return status.Error(codes.Unauthenticated, err.Error())
+	}
+	if err := CheckLocalSSHAuthorizedKeys(sshKey); err != nil {
+		return status.Error(codes.Unauthenticated, err.Error())
+	}
+	return nil
+}
 
 // 获取当前用户的
 func LocalUserSSHKey() (string, error) {
@@ -86,6 +95,8 @@ func LocalUserSSHKey() (string, error) {
 }
 
 func CheckLocalSSHAuthorizedKeys(sshKeysMd5Str string) error {
+	// sometime UserHomeDir will panic: $HOME not defined
+	// homedir := "/root"
 	homedir, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -112,19 +123,6 @@ func CheckLocalSSHAuthorizedKeys(sshKeysMd5Str string) error {
 	}
 	return errors.New("validate ssh_keys failed")
 }
-
-// 依据ssh公钥认证
-func authBySSHKeys(ctx context.Context) error {
-	sshKey, err := getAuthorityByContext(ctx)
-	if err != nil {
-		return status.Error(codes.Unauthenticated, err.Error())
-	}
-	if err := CheckLocalSSHAuthorizedKeys(sshKey); err != nil {
-		return status.Error(codes.Unauthenticated, err.Error())
-	}
-	return nil
-}
-
 func getAuthorityByContext(ctx context.Context) (string, error) {
 	var sshKey string
 	md, ok := metadata.FromIncomingContext(ctx)

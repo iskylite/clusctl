@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"myclush/global"
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
@@ -24,10 +25,10 @@ func (p *putStreamServer) RunCmd(req *pb.CmdReq, stream pb.RpcService_RunCmdServ
 		defer waitc.Done()
 		for reply := range repliesChannel {
 			if err := stream.Send(reply); err != nil {
-				log.Errorf("%s send reply into channel failed\n", reply.Nodelist)
+				log.Errorf("%s send reply from channel failed\n", reply.Nodelist)
 				return
 			}
-			log.Debugf("%s send reply into channel ok\n", reply.Nodelist)
+			log.Debugf("%s send reply from channel ok\n", reply.Nodelist)
 		}
 	}()
 	// global context
@@ -38,16 +39,27 @@ func (p *putStreamServer) RunCmd(req *pb.CmdReq, stream pb.RpcService_RunCmdServ
 	// local cmd setup
 	wg.Add(1)
 	go func() {
-		log.Debugf("Start Command [%s]\n", req.Cmd)
 		defer wg.Done()
-		out, ok := utils.ExecuteShellCmdWithContext(ctx, req.Cmd)
-		if !ok {
-			log.Errorf("Finish Command %s, Err =\n\t[%s]", req.Cmd, string(out))
-			repliesChannel <- newReply(false, out, localNode)
-			return
+		if req.Daemon {
+			log.Debugf("Start Daemon Command [%s]\n", req.Cmd)
+			if err := utils.ExecuteShellCmdDaemon(req.Cmd); err != nil {
+				log.Errorf("Finish Command %s, Err =\n\t[%v]", req.Cmd, err)
+				repliesChannel <- newReply(false, err.Error(), localNode)
+			} else {
+				log.Debugf("Finish Command %s\n", req.Cmd)
+				repliesChannel <- newReply(true, global.Success, localNode)
+			}
+		} else {
+			log.Debugf("Start Command [%s]\n", req.Cmd)
+			out, ok := utils.ExecuteShellCmdWithContext(ctx, req.Cmd)
+			if !ok {
+				log.Errorf("Finish Command %s, Err =\n\t[%s]", req.Cmd, string(out))
+				repliesChannel <- newReply(false, out, localNode)
+				return
+			}
+			log.Debugf("Finish Command %s, Out =\n\t[%s]", req.Cmd, string(out))
+			repliesChannel <- newReply(true, string(out), localNode)
 		}
-		log.Debugf("Finish Command %s, Out =\n\t[%s]", req.Cmd, string(out))
-		repliesChannel <- newReply(true, string(out), localNode)
 	}()
 
 	// remote client RunCmd
@@ -59,15 +71,16 @@ func (p *putStreamServer) RunCmd(req *pb.CmdReq, stream pb.RpcService_RunCmdServ
 		wg.Add(1)
 		go func(nodes []string) {
 			defer wg.Done()
-			log.Debugf("Setup RunCmdClientService For %s\n", nodes[0])
 			client, down, err := newRunCmdClientService(ctx, req.Cmd, req.Port, nodes,
-				req.Width, perRPCCredentials)
+				req.Width, perRPCCredentials, req.Daemon)
 			if err != nil {
-				repliesChannel <- newReply(false, err.Error(), utils.Merge(nodes...))
+				log.Errorf("Setup RunCmdClientService For %s failed\n", nodes[0])
+				repliesChannel <- newReply(false, utils.GrpcErrorMsg(err), utils.Merge(nodes...))
 				return
 			}
+			log.Debugf("Setup RunCmdClientService For %s\n", nodes[0])
 			if len(down) > 0 {
-				repliesChannel <- newReply(false, "connect failed", utils.Merge(down...))
+				repliesChannel <- newReply(false, "rpc timeout or failed", utils.Merge(down...))
 			}
 			defer client.CloseConn()
 			client.DiscribeRepliesChannel(repliesChannel)

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"myclush/global"
 	log "myclush/logger"
@@ -46,9 +45,6 @@ func clearTempDir(temp string) {
 }
 
 func (p *putStreamServer) RunServer(port string) error {
-	if port == "" {
-		return errors.New("server port not been specified")
-	}
 	addr := fmt.Sprintf("0.0.0.0:%s", port)
 	conn, err := net.Listen("tcp", addr)
 	if err != nil {

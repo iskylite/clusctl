@@ -39,6 +39,7 @@ message CmdReq {
     string nodelist = 2;
     int32 width = 3;
     string port = 4;
+    bool daemon = 5;
 }
 
 message CommonReq {

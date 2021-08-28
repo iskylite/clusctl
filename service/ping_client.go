@@ -120,6 +120,7 @@ func (p *PingClientService) Gather() {
 	}
 }
 
+// TODO: 添加进度显示
 func PingClientServiceSetup(ctx context.Context, nodes string, port, workers, timeout int) {
 	pingClientService := NewPingClientService(nodes, strconv.Itoa(port), workers)
 	pingClientService.SetTimeout(timeout)

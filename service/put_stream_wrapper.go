@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -13,6 +12,9 @@ import (
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type Wrapper interface {
@@ -111,7 +113,7 @@ LOOP:
 		case <-l.ctx.Done():
 			l.SetBad()
 			log.Errorf("cnt=[%d], canceled\n", cnt)
-			l.err = errors.New("canceled")
+			l.err = status.Error(codes.Canceled, "context canceled")
 			break LOOP
 		case data, ok := <-l.dataChan:
 			if !ok {

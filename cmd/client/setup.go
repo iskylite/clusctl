@@ -142,6 +142,12 @@ var (
 		Usage:   "sort command output by node list",
 		Value:   false,
 	}
+	execFlagForBackground *cli.BoolFlag = &cli.BoolFlag{
+		Name:    "background",
+		Aliases: []string{"b"},
+		Usage:   "run cmd in background",
+		Value:   false,
+	}
 	// 子命令 exec 配置
 	execCommandConfig *cli.Command = &cli.Command{
 		Name:    "execute",
@@ -151,9 +157,10 @@ var (
 			execFlagForCmd,
 			execFlagForList,
 			execFlagForWidth,
+			execFlagForBackground,
 		},
 		Action: func(c *cli.Context) error {
-			service.RunCmdClientServiceSetup(ctx, cancel, c.String("cmd"), nodes, c.Int("width"), port, c.Bool("list"))
+			service.RunCmdClientServiceSetup(ctx, cancel, c.String("cmd"), nodes, c.Int("width"), port, c.Bool("list"), c.Bool("background"))
 			return nil
 		},
 	}
