@@ -54,19 +54,19 @@ func (p *PingClientService) Ping(ctx context.Context, node string) {
 	}()
 	if err != nil {
 		p.replyChan <- newReply(false, utils.GrpcErrorMsg(err), node)
-		log.Errorf("PingError %s: %s\n", node, utils.GrpcErrorMsg(err))
+		// log.Errorf("PingError %s: %s\n", node, utils.GrpcErrorMsg(err))
 	} else {
 		client := pb.NewRpcServiceClient(conn)
 		reply, err := client.Ping(ctx, &pb.CommonReq{Version: global.Version})
 		if err != nil {
 			p.replyChan <- newReply(false, utils.GrpcErrorMsg(err), node)
-			log.Errorf("PingError %s: %s\n", node, utils.GrpcErrorMsg(err))
+			// log.Errorf("PingError %s: %s\n", node, utils.GrpcErrorMsg(err))
 		} else {
 			if reply.GetOk() {
 				p.replyChan <- newReply(true, global.Success, node)
 			} else {
 				p.replyChan <- newReply(false, "Version Unmatched", node)
-				log.Errorf("PingError %s: Version Unmatched\n", node)
+				// log.Errorf("PingError %s: Version Unmatched\n", node)
 			}
 		}
 	}
@@ -102,16 +102,23 @@ func (p *PingClientService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (p *PingClientService) Gather() {
+func (p *PingClientService) Gather(wg *sync.WaitGroup) {
+	defer wg.Done()
 	idleNodes := make([]string, 0)
 	downNodes := make([]string, 0)
+	cnt := 0
+	all := len(utils.ExpNodes(p.nodelist))
 	for rep := range p.replyChan {
+		cnt++
 		if rep.Pass {
 			idleNodes = append(idleNodes, rep.Nodelist)
+			fmt.Printf("\r%s %d/%d %s", log.ColorWrapper("PING:", log.Success), cnt, all, log.ColorWrapper(rep.Nodelist, log.Success))
 		} else {
 			downNodes = append(downNodes, rep.Nodelist)
+			fmt.Printf("\r%s %d/%d %s: %s\n", log.ColorWrapper("PING:", log.Failed), cnt, all, log.ColorWrapper(rep.Nodelist, log.Failed), log.ColorWrapper(rep.Msg, log.Failed))
 		}
 	}
+	fmt.Println()
 	if len(idleNodes) > 0 {
 		log.ColorWrapperInfo(log.Success, idleNodes, "")
 	}
@@ -125,5 +132,8 @@ func PingClientServiceSetup(ctx context.Context, nodes string, port, workers, ti
 	pingClientService := NewPingClientService(nodes, strconv.Itoa(port), workers)
 	pingClientService.SetTimeout(timeout)
 	go pingClientService.Run(ctx)
-	pingClientService.Gather()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go pingClientService.Gather(&wg)
+	wg.Wait()
 }
