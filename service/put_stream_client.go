@@ -224,7 +224,7 @@ LOOP:
 				return err
 			}
 			cnt++
-			data := bufferBytes[:buffer]
+			data := bufferBytes[0:n]
 			if err = p.Send(data); err != nil {
 				fmt.Printf("\r数据读取: %d/%d %s %s\n", cnt, counts, log.ColorWrapper("ERROR ==>", log.Failed), log.ColorWrapper(utils.GrpcErrorMsg(err), log.Failed))
 				return err
