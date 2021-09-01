@@ -13,11 +13,12 @@ var (
 )
 
 func main() {
-	defer func() {
-		if err := recover(); err != nil {
-			log.Error(err)
-		}
-	}()
+	// remove recover to get panic strace
+	// defer func() {
+	// 	if err := recover(); err != nil {
+	// 		log.Error(err)
+	// 	}
+	// }()
 	// signal handler
 	ctx, cancel = context.WithCancel(context.Background())
 	c := make(chan os.Signal, 1)

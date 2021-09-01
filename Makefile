@@ -4,7 +4,7 @@ pb:
 	protoc -I ./pb/ --go_out=plugins=grpc:. ./pb/stream.proto
 
 tls:
-	openssl req -new -newkey rsa:2048 -days 365000 -nodes -x509 -keyout ./conf/cert.key -out ./conf/cert.pem -extensions v3_req -config ./conf/openssl.cnf
+	openssl req -new -newkey rsa:2048 -days 36500 -nodes -x509 -keyout ./conf/cert.key -out ./conf/cert.pem -extensions v3_req -config ./conf/openssl.cnf
 
 build:
 	go build -o ${APP} cmd/client/*.go
