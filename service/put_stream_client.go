@@ -96,10 +96,12 @@ func (p *PutStreamClientService) GetAllNodelist() string {
 	}
 }
 
+// 获取节点树宽度
 func (p *PutStreamClientService) GetWidth() int32 {
 	return p.width
 }
 
+// 获取grpc数据流
 func (p *PutStreamClientService) GetStream() pb.RpcService_PutStreamClient {
 	return p.stream
 }
@@ -109,6 +111,7 @@ func (p *PutStreamClientService) CloseConn() {
 	p.conn.Close()
 }
 
+// 检查到目标节点的连接是否正常可用
 func (p *PutStreamClientService) checkConn(ctx context.Context, node string, authority grpc.DialOption) (*grpc.ClientConn, pb.RpcService_PutStreamClient, error) {
 	var waitc chan struct{} = make(chan struct{})
 	var conn *grpc.ClientConn
@@ -144,6 +147,7 @@ func (p *PutStreamClientService) checkConn(ctx context.Context, node string, aut
 	}
 }
 
+// 生成grpc流
 func (p *PutStreamClientService) GenStreamWithContext(ctx context.Context, authority grpc.DialOption) ([]string, error) {
 	nodes := utils.ExpNodes(p.nodelist)
 	p.num = len(nodes)
@@ -167,6 +171,7 @@ func (p *PutStreamClientService) GenStreamWithContext(ctx context.Context, autho
 	return down, err
 }
 
+// 发送数据
 func (p *PutStreamClientService) Send(data []byte) error {
 	putStreamReq := &pb.PutStreamReq{
 		Name:     p.filename,
@@ -185,6 +190,7 @@ func (p *PutStreamClientService) Send(data []byte) error {
 	return p.stream.Send(putStreamReq)
 }
 
+// 用于客户端，开启服务
 func (p *PutStreamClientService) RunServe(ctx context.Context, buffer int) error {
 	fp, err := os.Open(p.srcPath)
 	if err != nil {
@@ -239,6 +245,7 @@ func (p *PutStreamClientService) Gather(reply []*pb.Reply) {
 	gather(reply)
 }
 
+// 把节点映射到map中，方便判断是否有该节点的响应
 // 20W节点0.4s运行完毕
 func hashNodesMap(nodes string) (sync.Map, error) {
 	var resultSet sync.Map
@@ -266,6 +273,8 @@ func hashNodesMap(nodes string) (sync.Map, error) {
 	return resultSet, nil
 }
 
+// 客户端服务
+// 用于myclush
 func PutStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, destDir, nodes, buffer string, port, width int) {
 	defer cancel()
 	bufferSize, err := utils.ConvertSize(buffer)
