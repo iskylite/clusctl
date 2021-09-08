@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	log "myclush/logger"
 	"os"
 	"os/signal"
 )
@@ -25,7 +24,7 @@ func main() {
 	signal.Notify(c, os.Interrupt)
 	go func(c chan os.Signal, cancel func()) {
 		<-c
-		log.Info("\nGet Cancel Signal")
+		// log.Info("\nGet Cancel Signal")
 		cancel()
 	}(c, cancel)
 	// Run Setup Service

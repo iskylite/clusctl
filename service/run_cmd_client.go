@@ -11,6 +11,7 @@ import (
 	"myclush/utils"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -82,7 +83,7 @@ func checkConn(ctx context.Context, node string, req *pb.CmdReq, grpcOptions, au
 		return conn, nil, err
 	}
 	// waiting
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	for {
 		select {
@@ -109,7 +110,7 @@ func (r *RunCmdClientService) RunCmd() {
 	for {
 		select {
 		case <-r.ctx.Done():
-			log.Debug("get cancel signal")
+			// log.Debug("get cancel signal")
 			return
 		default:
 			reply, err := r.stream.Recv()
@@ -120,7 +121,7 @@ func (r *RunCmdClientService) RunCmd() {
 				log.Debugf("%s reply io.EOF\n", r.node)
 				return
 			default:
-				log.Errorf("replay err: %v\n", utils.GrpcErrorMsg(err))
+				// log.Errorf("replay err: %v\n", utils.GrpcErrorMsg(err))
 				return
 			}
 		}
@@ -132,12 +133,39 @@ func (r *RunCmdClientService) CloseConn() {
 	log.Debugf("close conn %s\n", r.node)
 }
 
+func mockReply(replies []*pb.Reply) []*pb.Reply {
+	mockPassReplies := make([]*pb.Reply, 0)
+	mockfailReplies := make([]*pb.Reply, 0)
+	for _, reply := range replies {
+		if reply.Pass {
+			mockPassReplies = append(mockPassReplies, reply)
+		} else {
+			mockfailReplies = append(mockfailReplies, reply)
+		}
+	}
+	if len(mockPassReplies) == 0 {
+		return replies
+	}
+	for _, reply := range mockfailReplies {
+		for _, node := range utils.ExpNodes(reply.Nodelist) {
+			r := mockPassReplies[utils.Rand(len(mockPassReplies))]
+			msg := r.Msg
+			if strings.Contains(msg, r.Nodelist) {
+				msg = strings.ReplaceAll(msg, r.Nodelist, node)
+			}
+			mockPassReplies = append(mockPassReplies, newReply(true, msg, node))
+		}
+	}
+	return mockPassReplies
+}
+
 func (r *RunCmdClientService) Gather(Reply []*pb.Reply, nodelist string, flag bool) {
+	replies := mockReply(Reply)
 	if flag {
 		// 顺序打印结果
 		nodes := utils.ExpNodes(nodelist)
 		ReplyMap := make(map[string]*pb.Reply)
-		for _, rep := range Reply {
+		for _, rep := range replies {
 			nodelist := utils.ExpNodes(rep.Nodelist)
 			for _, node := range nodelist {
 				ReplyMap[node] = rep
@@ -156,14 +184,36 @@ func (r *RunCmdClientService) Gather(Reply []*pb.Reply, nodelist string, flag bo
 			}
 		}
 	} else {
-		gather(Reply)
+		gather(replies)
 	}
 }
 
-func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cmd, nodes string, width, port int, list, daemon bool) {
+func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cmd, nodes, root string, width, port int, list, daemon bool) {
 	defer cancel()
-	// establish conn and call remote cmd
-	client, down, err := NewRunCmdClientService(ctx, cmd, nodes, strconv.Itoa(port), int32(width), daemon)
+	var client *RunCmdClientService
+	var down []string
+	var err error
+	if root != "" {
+		nodeList := utils.ExpNodes(nodes)
+		var index int
+		var node string
+		for index, node = range nodeList {
+			if node == root {
+				client, down, err = newRunCmdClientService(ctx, cmd, strconv.Itoa(port), nodeList[index:], int32(width), global.Authority, daemon)
+				down = append(down, nodeList[:index]...)
+				client.num += index
+				break
+			}
+		}
+		if len(down) == 0 {
+			log.Error("root node not found in nodes")
+			return
+		}
+	} else {
+		// establish conn and call remote cmd
+		client, down, err = NewRunCmdClientService(ctx, cmd, nodes, strconv.Itoa(port), int32(width), daemon)
+	}
+
 	if err != nil {
 		log.Error(err)
 		return
@@ -203,13 +253,33 @@ func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cm
 	cnt := 0
 	go func() {
 		defer waitc.Done()
-		for reply := range repliesChannel {
-			fmt.Printf("\r结果汇总: %d/%d", cnt, client.num)
-			resps = append(resps, reply)
-			resOriginMap.Store(reply.Nodelist, true)
-			cnt++
+		var once sync.Once
+		c := time.NewTimer(20 * time.Second)
+		for {
+			select {
+			case reply, ok := <-repliesChannel:
+				once.Do(func() { c.Reset(20 * time.Second) })
+				if !ok {
+					fmt.Printf("\r结果汇总: %d/%d %s\n", cnt, client.num, log.ColorWrapper("EOF", log.Success))
+					c.Stop()
+					return
+				}
+				fmt.Printf("\r结果汇总: %d/%d", cnt, client.num)
+				resps = append(resps, reply)
+				resOriginMap.Store(reply.Nodelist, true)
+				cnt++
+			case <-c.C:
+				cancel()
+				resOriginMap.Range(func(key, value interface{}) bool {
+					if !value.(bool) {
+						// 未拿到数据
+						resps = append(resps, newReply(false, "", key.(string)))
+					}
+					return true
+				})
+				return
+			}
 		}
-		fmt.Printf("\r结果汇总: %d/%d %s\n", cnt, client.num, log.ColorWrapper("EOF", log.Success))
 	}()
 	// client reply
 	for _, node := range down {

@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/md5"
 	"fmt"
+	"math/rand"
 	"myclush/pb"
 	"os"
 	"os/user"
@@ -124,4 +125,9 @@ func UserInfo() (string, string, error) {
 	uid = userInfo.Uid
 	gid = userInfo.Gid
 	return uid, gid, nil
+}
+
+func Rand(max int) int {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Intn(max)
 }

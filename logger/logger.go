@@ -158,7 +158,8 @@ func ColorWrapper(msg string, color int) string {
 }
 
 func ColorWrapperInfo(color int, nodelist []string, msg string) {
+	nodes := utils.Merge(nodelist...)
 	diviLine := ColorWrapper("--------------------", color)
-	metaLine := ColorWrapper(fmt.Sprintf("%s  (%d)", utils.Merge(nodelist...), len(nodelist)), color)
+	metaLine := ColorWrapper(fmt.Sprintf("%s  (%d)", nodes, len(utils.ExpNodes(nodes))), color)
 	Infof("\n%s\n%s\n%s\n%s\n", diviLine, metaLine, diviLine, msg)
 }

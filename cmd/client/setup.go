@@ -148,6 +148,11 @@ var (
 		Usage:   "run cmd in background",
 		Value:   false,
 	}
+	execFlagForRoot *cli.StringFlag = &cli.StringFlag{
+		Name:    "root",
+		Aliases: []string{"r"},
+		Usage:   "specify root node in b+ tree while skip head nodes before root node",
+	}
 	// 子命令 exec 配置
 	execCommandConfig *cli.Command = &cli.Command{
 		Name:    "execute",
@@ -158,9 +163,10 @@ var (
 			execFlagForList,
 			execFlagForWidth,
 			execFlagForBackground,
+			execFlagForRoot,
 		},
 		Action: func(c *cli.Context) error {
-			service.RunCmdClientServiceSetup(ctx, cancel, c.String("cmd"), nodes, c.Int("width"), port, c.Bool("list"), c.Bool("background"))
+			service.RunCmdClientServiceSetup(ctx, cancel, c.String("cmd"), nodes, c.String("root"), c.Int("width"), port, c.Bool("list"), c.Bool("background"))
 			return nil
 		},
 	}
