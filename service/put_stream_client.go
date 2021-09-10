@@ -342,16 +342,21 @@ func PutStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, 
 			case nil:
 				resps = append(resps, data)
 				cnt += len(utils.ExpNodes(data.Nodelist))
+
+				if cnt > clientService.num {
+					cnt = clientService.num
+				}
 				fmt.Printf("\r结果汇总: %d/%d", cnt, clientService.num)
 				for _, node := range utils.ExpNodes(data.Nodelist) {
 					resOriginMap.Store(node, true)
 				}
 			case io.EOF:
+				cnt = clientService.num
 				fmt.Printf("\r结果汇总: %d/%d %s\n", cnt, clientService.num, log.ColorWrapper("EOF", log.Success))
 				break LOOP
 			default:
-				fmt.Printf("\r结果汇总: %d/%d %s %s\n", cnt, clientService.num, log.ColorWrapper("ERROR ==>", log.Failed),
-					log.ColorWrapper(utils.GrpcErrorMsg(err), log.Failed))
+				cnt = clientService.num
+				fmt.Printf("\r结果汇总: %d/%d %s %s\n", cnt, clientService.num, log.ColorWrapper("ERROR ==>", log.Failed), log.ColorWrapper(utils.GrpcErrorMsg(err), log.Failed))
 				break LOOP
 			}
 		}

@@ -159,7 +159,7 @@ func mockReply(replies []*pb.Reply) []*pb.Reply {
 	return mockPassReplies
 }
 
-func (r *RunCmdClientService) Gather(Reply []*pb.Reply, nodelist string, flag bool) {
+func (r *RunCmdClientService) Gather(Reply []*pb.Reply, nodelist string, flag bool, f *os.File) {
 	replies := mockReply(Reply)
 	if flag {
 		// 顺序打印结果
@@ -174,21 +174,21 @@ func (r *RunCmdClientService) Gather(Reply []*pb.Reply, nodelist string, flag bo
 		for _, node := range nodes {
 			rep, ok := ReplyMap[node]
 			if !ok {
-				log.ColorWrapperInfo(log.Failed, utils.ExpNodes(node), "hostname unmatched")
+				log.MultiColorWrapperInfo(log.Failed, utils.ExpNodes(node), "hostname unmatched", f)
 				continue
 			}
 			if rep.Pass {
-				log.ColorWrapperInfo(log.Success, utils.ExpNodes(node), rep.Msg)
+				log.MultiColorWrapperInfo(log.Success, utils.ExpNodes(node), rep.Msg, f)
 			} else {
-				log.ColorWrapperInfo(log.Failed, utils.ExpNodes(node), rep.Msg)
+				log.MultiColorWrapperInfo(log.Failed, utils.ExpNodes(node), rep.Msg, f)
 			}
 		}
 	} else {
-		gather(replies)
+		gatherWithOutput(replies, f)
 	}
 }
 
-func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cmd, nodes, root string, width, port int, list, daemon bool) {
+func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cmd, nodes, root, output string, width, port int, list, daemon bool) {
 	defer cancel()
 	var client *RunCmdClientService
 	var down []string
@@ -260,15 +260,20 @@ func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cm
 			case reply, ok := <-repliesChannel:
 				once.Do(func() { c.Reset(20 * time.Second) })
 				if !ok {
+					cnt = client.num
 					fmt.Printf("\r结果汇总: %d/%d %s\n", cnt, client.num, log.ColorWrapper("EOF", log.Success))
 					c.Stop()
 					return
+				}
+				if cnt > client.num {
+					cnt = client.num
 				}
 				fmt.Printf("\r结果汇总: %d/%d", cnt, client.num)
 				resps = append(resps, reply)
 				resOriginMap.Store(reply.Nodelist, true)
 				cnt++
 			case <-c.C:
+				defer c.Stop()
 				cancel()
 				resOriginMap.Range(func(key, value interface{}) bool {
 					if !value.(bool) {
@@ -277,6 +282,7 @@ func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cm
 					}
 					return true
 				})
+				fmt.Printf("\r结果汇总: %d/%d %s\n", client.num, client.num, log.ColorWrapper("EOF", log.Success))
 				return
 			}
 		}
@@ -289,5 +295,15 @@ func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cm
 	client.RunCmd()
 	close(repliesChannel)
 	waitc.Wait()
-	client.Gather(resps, nodes, list)
+	var f *os.File
+	if output != "" {
+		f, err = os.Create(output)
+		if err != nil {
+			log.Errorf("open output failed: %s\n", err)
+		}
+		if f != nil {
+			defer f.Close()
+		}
+	}
+	client.Gather(resps, nodes, list, f)
 }

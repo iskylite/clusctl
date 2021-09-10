@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"myclush/utils"
+	"os"
 )
 
 const (
@@ -162,4 +163,15 @@ func ColorWrapperInfo(color int, nodelist []string, msg string) {
 	diviLine := ColorWrapper("--------------------", color)
 	metaLine := ColorWrapper(fmt.Sprintf("%s  (%d)", nodes, len(utils.ExpNodes(nodes))), color)
 	Infof("\n%s\n%s\n%s\n%s\n", diviLine, metaLine, diviLine, msg)
+}
+
+func MultiColorWrapperInfo(color int, nodelist []string, msg string, f *os.File) {
+	nodes := utils.Merge(nodelist...)
+	diviLine := ColorWrapper("--------------------", color)
+	metaLine := ColorWrapper(fmt.Sprintf("%s  (%d)", nodes, len(utils.ExpNodes(nodes))), color)
+	if f != nil {
+		fmt.Fprintf(f, "\n%s\n%s\n%s\n%s\n", diviLine, metaLine, diviLine, msg)
+	} else {
+		Infof("\n%s\n%s\n%s\n%s\n", diviLine, metaLine, diviLine, msg)
+	}
 }

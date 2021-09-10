@@ -76,6 +76,9 @@ var (
 			pingFlagForTimeout,
 		},
 		Action: func(c *cli.Context) error {
+			if nodes == "" {
+				return errors.New("flag \"--nodes\" or \"-n\" not provide")
+			}
 			service.PingClientServiceSetup(ctx, nodes, port, c.Int("workers"), c.Int("timeout"))
 			return nil
 		},
@@ -118,6 +121,9 @@ var (
 			rcopyFlagForWidth,
 		},
 		Action: func(c *cli.Context) error {
+			if nodes == "" {
+				return errors.New("flag \"--nodes\" or \"-n\" not provide")
+			}
 			service.PutStreamClientServiceSetup(ctx, cancel, c.String("file"), c.String("dest"), nodes, c.String("size"), port, c.Int("width"))
 			return nil
 		},
@@ -153,6 +159,11 @@ var (
 		Aliases: []string{"r"},
 		Usage:   "specify root node in b+ tree while skip head nodes before root node",
 	}
+	execFlagForOutput *cli.StringFlag = &cli.StringFlag{
+		Name:    "output",
+		Aliases: []string{"o"},
+		Usage:   "specify file path to store exec output",
+	}
 	// 子命令 exec 配置
 	execCommandConfig *cli.Command = &cli.Command{
 		Name:    "execute",
@@ -164,9 +175,13 @@ var (
 			execFlagForWidth,
 			execFlagForBackground,
 			execFlagForRoot,
+			execFlagForOutput,
 		},
 		Action: func(c *cli.Context) error {
-			service.RunCmdClientServiceSetup(ctx, cancel, c.String("cmd"), nodes, c.String("root"), c.Int("width"), port, c.Bool("list"), c.Bool("background"))
+			if nodes == "" {
+				return errors.New("flag \"--nodes\" or \"-n\" not provide")
+			}
+			service.RunCmdClientServiceSetup(ctx, cancel, c.String("cmd"), nodes, c.String("root"), c.String("output"), c.Int("width"), port, c.Bool("list"), c.Bool("background"))
 			return nil
 		},
 	}
@@ -220,9 +235,6 @@ func setLogLevel(debug bool) {
 func Before(c *cli.Context) error {
 	// log debug
 	setLogLevel(c.Bool("debug"))
-	if c.String("nodes") == "" {
-		return errors.New("flag \"--nodes\" or \"-r\" not provide")
-	}
 	// root privileges
 	uid, gid, err := utils.UserInfo()
 	if err != nil {
