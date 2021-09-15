@@ -203,11 +203,26 @@ func RunCmdClientServiceSetup(ctx context.Context, cancel context.CancelFunc, cm
 	cnt := 0
 	go func() {
 		defer waitc.Done()
-		for reply := range repliesChannel {
-			fmt.Printf("\r结果汇总: %d/%d", cnt, client.num)
-			resps = append(resps, reply)
-			resOriginMap.Store(reply.Nodelist, true)
-			cnt++
+		fmt.Printf("\r结果汇总: %d/%d", 0, client.num)
+		for data := range repliesChannel {
+			for _, node := range utils.ExpNodes(data.Nodelist) {
+				log.Debugf("接收响应: pass -> %t, node -> %s, msg -> %s\n", data.Pass, node, data.Msg)
+				if value, ok := resOriginMap.Load(node); ok {
+					// 节点存在于resOriginMap
+					if !value.(bool) {
+						// 之前未接收到该节点的响应
+						resOriginMap.Store(node, true)
+						resps = append(resps, newReply(data.Pass, data.Msg, node))
+						cnt++
+						fmt.Printf("\r结果汇总: %d/%d", cnt, client.num)
+					}
+				} else {
+					// 节点被确认不存在于resOriginMap
+					resps = append(resps, newReply(data.Pass, data.Msg, node))
+					cnt++
+					fmt.Printf("\r结果汇总: %d/%d", cnt, client.num)
+				}
+			}
 		}
 		fmt.Printf("\r结果汇总: %d/%d %s\n", cnt, client.num, log.ColorWrapper("EOF", log.Success))
 	}()

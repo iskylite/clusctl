@@ -335,16 +335,29 @@ func PutStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, 
 	waitc.Add(1)
 	go func() {
 		defer waitc.Done()
+		fmt.Printf("\r结果汇总: %d/%d", 0, clientService.num)
 	LOOP:
 		for {
 			data, err := clientService.stream.Recv()
 			switch err {
 			case nil:
-				resps = append(resps, data)
-				cnt += len(utils.ExpNodes(data.Nodelist))
-				fmt.Printf("\r结果汇总: %d/%d", cnt, clientService.num)
 				for _, node := range utils.ExpNodes(data.Nodelist) {
-					resOriginMap.Store(node, true)
+					log.Debugf("接收响应: pass -> %t, node -> %s, msg -> %s\n", data.Pass, node, data.Msg)
+					if value, ok := resOriginMap.Load(node); !ok {
+						// 节点存在于resOriginMap
+						if !value.(bool) {
+							// 之前未接收到该节点的响应
+							resOriginMap.Store(node, true)
+							resps = append(resps, newReply(data.Pass, data.Msg, node))
+							cnt++
+							fmt.Printf("\r结果汇总: %d/%d", cnt, clientService.num)
+						}
+					} else {
+						// 节点被确认不存在于resOriginMap
+						resps = append(resps, newReply(data.Pass, data.Msg, node))
+						cnt++
+						fmt.Printf("\r结果汇总: %d/%d", cnt, clientService.num)
+					}
 				}
 			case io.EOF:
 				fmt.Printf("\r结果汇总: %d/%d %s\n", cnt, clientService.num, log.ColorWrapper("EOF", log.Success))

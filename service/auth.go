@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 )
 
@@ -39,11 +40,18 @@ func GenServerTransportCredentials() (grpc.ServerOption, error) {
 // 一元拦截器
 func unaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		// 查询服务端地址
+		if ip, err := clientIP(ctx); err == nil {
+			logger.Infof("unary client: [%s]\n", ip)
+		} else {
+			logger.Error(err)
+		}
+		// auth
 		if err := authBySSHKeys(ctx); err != nil {
-			logger.Errorf("unary [%s] validate failed: %v\n", info.FullMethod, err)
+			logger.Errorf("unary path: [%s] validate failed: %v\n", info.FullMethod, err)
 			return nil, err
 		}
-		logger.Debugf("unary [%s] validate pass\n", info.FullMethod)
+		logger.Infof("unary path: [%s] validate passed\n", info.FullMethod)
 		return handler(ctx, req)
 	}
 }
@@ -51,14 +59,21 @@ func unaryServerInterceptor() grpc.UnaryServerInterceptor {
 // stream拦截器
 func streamServerInterceptor() grpc.StreamServerInterceptor {
 	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		// 查询服务端地址
+		if ip, err := clientIP(ss.Context()); err == nil {
+			logger.Infof("unary client: [%s]\n", ip)
+		} else {
+			logger.Error(err)
+		}
+		// auth
 		if err := authBySSHKeys(ss.Context()); err != nil {
 			// 由于直接返回的错误在repliesChannel中是没有节点信息的，所以不知到是哪个节点出错了，故在此处直接返回错误信息
 			// 并且对于stream.Recv接受普通的错误不做处理
-			logger.Errorf("stream [%s] validate failed: %v\n", info.FullMethod, err)
+			logger.Errorf("stream path: [%s] validate failed: %v\n", info.FullMethod, err)
 			ss.SendMsg(newReply(false, utils.GrpcErrorMsg(err), utils.Hostname()))
 			return err
 		}
-		logger.Debugf("stream [%s] validate pass\n", info.FullMethod)
+		logger.Infof("stream path: [%s] validate passed\n", info.FullMethod)
 		return handler(srv, ss)
 	}
 }
@@ -169,4 +184,12 @@ func SetAuthorityMetadata() (grpc.DialOption, error) {
 		return nil, err
 	}
 	return grpc.WithPerRPCCredentials(&authority{sshKey: sshKey}), nil
+}
+
+func clientIP(ctx context.Context) (string, error) {
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		return "", errors.New("no peer information exists!")
+	}
+	return p.Addr.String(), nil
 }
