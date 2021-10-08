@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"myclush/utils"
+	"os"
 )
 
 const (
@@ -61,10 +62,23 @@ func SetOutput(output io.Writer) {
 	Logger.log.SetOutput(output)
 }
 
+func SetOutputFile(logFile string) (*os.File, error) {
+	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
+	if err != nil {
+		return f, err
+	}
+	SetOutput(f)
+	return f, nil
+}
+
 func Debug(a ...interface{}) {
 	if Logger.level == DEBUG {
 		if Logger.silent {
-			fmt.Println(a...)
+			if Logger.log.Writer() != nil {
+				fmt.Fprint(Logger.log.Writer(), a...)
+			} else {
+				fmt.Println(a...)
+			}
 		} else {
 			lp := "DEBG "
 			if Logger.color {
@@ -79,7 +93,11 @@ func Debug(a ...interface{}) {
 func Debugf(format string, v ...interface{}) {
 	if Logger.level == DEBUG {
 		if Logger.silent {
-			fmt.Printf(format, v...)
+			if Logger.log.Writer() != nil {
+				fmt.Fprintf(Logger.log.Writer(), format, v...)
+			} else {
+				fmt.Printf(format, v...)
+			}
 		} else {
 			lp := "DEBG "
 			if Logger.color {
@@ -93,7 +111,11 @@ func Debugf(format string, v ...interface{}) {
 func Info(a ...interface{}) {
 	if Logger.level <= INFO {
 		if Logger.silent {
-			fmt.Println(a...)
+			if Logger.log.Writer() != nil {
+				fmt.Fprint(Logger.log.Writer(), a...)
+			} else {
+				fmt.Println(a...)
+			}
 		} else {
 			lp := "INFO "
 			if Logger.color {
@@ -108,7 +130,11 @@ func Info(a ...interface{}) {
 func Infof(format string, v ...interface{}) {
 	if Logger.level <= INFO {
 		if Logger.silent {
-			fmt.Printf(format, v...)
+			if Logger.log.Writer() != nil {
+				fmt.Fprintf(Logger.log.Writer(), format, v...)
+			} else {
+				fmt.Printf(format, v...)
+			}
 		} else {
 			lp := "INFO "
 			if Logger.color {
@@ -123,7 +149,11 @@ func Infof(format string, v ...interface{}) {
 func Error(a ...interface{}) {
 	if Logger.level <= ERROR {
 		if Logger.silent {
-			fmt.Println(a...)
+			if Logger.log.Writer() != nil {
+				fmt.Fprint(Logger.log.Writer(), a...)
+			} else {
+				fmt.Println(a...)
+			}
 		} else {
 			lp := "ERRO "
 			if Logger.color {
@@ -138,7 +168,11 @@ func Error(a ...interface{}) {
 func Errorf(format string, v ...interface{}) {
 	if Logger.level <= ERROR {
 		if Logger.silent {
-			fmt.Printf(format, v...)
+			if Logger.log.Writer() != nil {
+				fmt.Fprintf(Logger.log.Writer(), format, v...)
+			} else {
+				fmt.Printf(format, v...)
+			}
 		} else {
 			lp := "ERRO "
 			if Logger.color {

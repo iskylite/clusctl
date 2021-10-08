@@ -78,7 +78,7 @@ func (p *putStreamServer) RunCmd(req *pb.CmdReq, stream pb.RpcService_RunCmdServ
 				repliesChannel <- newReply(false, utils.GrpcErrorMsg(err), utils.Merge(nodes...))
 				return
 			}
-			log.Infof("Setup RunCmdClientService For %s\n", nodes[0])
+			log.Infof("Setup RunCmdClientService For %s Success\n", nodes[0])
 			if len(down) > 0 {
 				repliesChannel <- newReply(false, "rpc timeout or failed", utils.Merge(down...))
 			}

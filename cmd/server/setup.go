@@ -82,12 +82,11 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 				// app运行在子进程中
 				// 日志重定向
 				logFile := filepath.Join("/var/log", c.App.Name+".log")
-				f, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
+				f, err := log.SetOutputFile(logFile)
 				if err != nil {
-					return nil
+					return err
 				}
 				defer f.Close()
-				log.SetOutput(f)
 				log.Infof("%s start \n", c.App.Name)
 				time.Sleep(2 * time.Second)
 				//运行

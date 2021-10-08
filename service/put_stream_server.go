@@ -109,7 +109,7 @@ LOOP:
 					}
 					stream.SetFileInfo(data.Uid, data.Gid, data.Filemod, data.Modtime)
 					wg.Add(1)
-					log.Infof("Server Stream Client [%s] Setup", addr)
+					log.Infof("Server Stream Client [%s] Setup Success", addr)
 					streams = append(streams, stream)
 					stream.DiscribeRepliesChannel(repliesChannel)
 					go stream.SendFromChannel()

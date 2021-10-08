@@ -115,6 +115,11 @@ var (
 		Usage:   "payload size (eg: 51200, 512k, 1m) in rpc package",
 		Value:   "2M",
 	}
+	rcopyFlagForOutput *cli.StringFlag = &cli.StringFlag{
+		Name:    "output",
+		Aliases: []string{"o"},
+		Usage:   "dump output into log file",
+	}
 	// 子命令 rcopy 配置
 	rcopyCommandConfig *cli.Command = &cli.Command{
 		Name:    "rcopy",
@@ -125,8 +130,18 @@ var (
 			rcopyFlagForBufferSize,
 			rcopyFlagForDestdir,
 			rcopyFlagForWidth,
+			rcopyFlagForOutput,
 		},
 		Action: func(c *cli.Context) error {
+			logfile := c.String("output")
+			if logfile != "" {
+				f, err := log.SetOutputFile(logfile)
+				if err != nil {
+					return err
+				}
+				defer f.Close()
+				log.Infof("start: %v\n", os.Args[:])
+			}
 			service.PutStreamClientServiceSetup(ctx, cancel, c.String("file"), c.String("dest"), nodes, c.String("size"), port, c.Int("width"))
 			return nil
 		},
@@ -157,6 +172,11 @@ var (
 		Usage:   "run cmd in background",
 		Value:   false,
 	}
+	execFlagForOutput *cli.StringFlag = &cli.StringFlag{
+		Name:    "output",
+		Aliases: []string{"o"},
+		Usage:   "dump output into log file",
+	}
 	// 子命令 exec 配置
 	execCommandConfig *cli.Command = &cli.Command{
 		Name:    "execute",
@@ -167,8 +187,18 @@ var (
 			execFlagForList,
 			execFlagForWidth,
 			execFlagForBackground,
+			execFlagForOutput,
 		},
 		Action: func(c *cli.Context) error {
+			logfile := c.String("output")
+			if logfile != "" {
+				f, err := log.SetOutputFile(logfile)
+				if err != nil {
+					return err
+				}
+				defer f.Close()
+				log.Infof("start: %v\n", os.Args[:])
+			}
 			service.RunCmdClientServiceSetup(ctx, cancel, c.String("cmd"), nodes, c.Int("width"), port, c.Bool("list"), c.Bool("background"))
 			return nil
 		},
