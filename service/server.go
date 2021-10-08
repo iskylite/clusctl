@@ -77,7 +77,7 @@ func PutStreamServerServiceSetup(ctx context.Context, cancel func(), tmpDir stri
 		defer cancel()
 		err := serverService.RunServer(strconv.Itoa(port))
 		if err != nil {
-			log.Errorf("PutStreamServerService Failed, err=[%s]\n", utils.GrpcErrorMsg(err))
+			log.Errorf("PutStreamServerService Failed, err=[%v]\n", err)
 			return
 		}
 	}()

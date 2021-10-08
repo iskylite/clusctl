@@ -24,6 +24,8 @@ var (
 	debug bool
 	// 端口
 	port int
+	// 是否有颜色输出
+	color bool
 )
 
 // 全局选项参数配置
@@ -47,6 +49,13 @@ var (
 		Value:       1995,
 		Usage:       "grpc service port",
 		Destination: &port,
+	}
+	globalFlagForColor *cli.BoolFlag = &cli.BoolFlag{
+		Name:        "disablecolor",
+		Aliases:     []string{"dc"},
+		Value:       false,
+		Usage:       "disable log color print",
+		Destination: &color,
 	}
 )
 
@@ -187,6 +196,7 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 			globalFlagForNodes,
 			globalFlagForDebug,
 			globalFlagForPort,
+			globalFlagForColor,
 		},
 		// 子命令配置
 		Commands: []*cli.Command{
@@ -203,17 +213,12 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 	return err
 }
 
-func setLogLevel(debug bool) {
-	if debug {
-		log.SetLevel(log.DEBUG)
-	} else {
-		log.SetSilent()
-	}
-}
-
 func Before(c *cli.Context) error {
 	// log debug
-	setLogLevel(c.Bool("debug"))
+	log.SetLogLevel(c.Bool("debug"))
+	if c.Bool("disablecolor") {
+		log.DisableColor()
+	}
 	if c.String("nodes") == "" {
 		return errors.New("flag \"--nodes\" or \"-r\" not provide")
 	}

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"myclush/global"
 	"myclush/logger"
 	"myclush/utils"
 	"os"
@@ -13,29 +12,10 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 )
-
-// CLientTLS
-func GenClientTransportCredentials() (grpc.DialOption, error) {
-	creds, err := credentials.NewClientTLSFromFile(global.CertPemPath, "myclush.com")
-	if err != nil {
-		return grpc.EmptyDialOption{}, err
-	}
-	return grpc.WithTransportCredentials(creds), nil
-}
-
-// server TLS
-func GenServerTransportCredentials() (grpc.ServerOption, error) {
-	creds, err := credentials.NewServerTLSFromFile(global.CertPemPath, global.CertKeyPath)
-	if err != nil {
-		return grpc.EmptyServerOption{}, err
-	}
-	return grpc.Creds(creds), nil
-}
 
 // 一元拦截器
 func unaryServerInterceptor() grpc.UnaryServerInterceptor {

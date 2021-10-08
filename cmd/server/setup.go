@@ -114,14 +114,10 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 	return err
 }
 
-func setLogLevel(debug bool) {
-	if debug {
+func Before(c *cli.Context) error {
+	if c.Bool("debug") {
 		log.SetLevel(log.DEBUG)
 	}
-}
-
-func Before(c *cli.Context) error {
-	setLogLevel(c.Bool("debug"))
 	uid, gid, err := utils.UserInfo()
 	if err != nil {
 		return err

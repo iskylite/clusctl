@@ -26,6 +26,14 @@ type logger struct {
 	log    *log.Logger
 }
 
+func SetLogLevel(debug bool) {
+	if debug {
+		SetLevel(DEBUG)
+	} else {
+		SetSilent()
+	}
+}
+
 func newlogger(level int) *logger {
 	defaultLogger := log.Default()
 	defaultLogger.SetFlags(log.Lshortfile | log.Ldate | log.Ltime | log.Lmsgprefix)
@@ -46,7 +54,7 @@ func SetSilent() {
 }
 
 func DisableColor() {
-	Logger.color = true
+	Logger.color = false
 }
 
 func SetOutput(output io.Writer) {
