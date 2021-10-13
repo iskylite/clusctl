@@ -42,11 +42,13 @@ func (p *putStreamServer) RunCmd(req *pb.CmdReq, stream pb.RpcService_RunCmdServ
 		defer wg.Done()
 		if req.Daemon {
 			log.Debugf("Start Daemon Command [%s]\n", req.Cmd)
-			if err := utils.ExecuteShellCmdDaemon(req.Cmd); err != nil {
+			if cmd, err := utils.ExecuteShellCmdDaemon(req.Cmd); err != nil {
 				log.Errorf("Finish Command %s, Err =\n\t[%v]", req.Cmd, err)
 				repliesChannel <- newReply(false, err.Error(), localNode)
 			} else {
 				log.Debugf("Finish Command %s\n", req.Cmd)
+				// wait for daemon process to exit, fix bash defunct process
+				go cmd.Wait()
 				repliesChannel <- newReply(true, global.Success, localNode)
 			}
 		} else {

@@ -55,7 +55,7 @@ func ExecuteShellCmdWithTimeout(cmdStr string, timeout int) (string, bool) {
 	return strings.TrimSpace(string(out)), true
 }
 
-func ExecuteShellCmdDaemon(cmdStr string) error {
-	cmd := exec.Command("/bin/bash", "-c", cmdStr+";exit")
-	return cmd.Start()
+func ExecuteShellCmdDaemon(cmdStr string) (*exec.Cmd, error) {
+	cmd := exec.Command("/bin/bash", "-c", cmdStr)
+	return cmd, cmd.Start()
 }
