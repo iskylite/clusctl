@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	log "myclush/logger"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 )

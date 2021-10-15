@@ -6,11 +6,10 @@ import (
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"runtime"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -42,7 +41,7 @@ func newStreamWrapper(ctx context.Context, filename, destPath, port string, node
 	}
 	var ok atomic.Value
 	ok.Store(true)
-	return &StreamWrapper{ok, stream, make(chan []byte, runtime.NumCPU()), nil, wg, nil}, down, nil
+	return &StreamWrapper{ok, stream, make(chan []byte, runtime.NumCPU()/2), nil, wg, nil}, down, nil
 }
 
 func (s *StreamWrapper) SetFileInfo(uid, gid, filemod uint32, modtime int64) {

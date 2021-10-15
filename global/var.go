@@ -19,4 +19,5 @@ var (
 	Authority                  grpc.DialOption
 	ClientTransportCredentials grpc.DialOption
 	ServerTransportCredentials grpc.ServerOption
+	MunalGC                    bool // 是否手动gc
 )

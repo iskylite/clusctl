@@ -75,7 +75,7 @@ func newLocalWriterWrapper(ctx context.Context, data *pb.PutStreamReq, tmpDir st
 	r := new(LocalWriterWrapper)
 	var ok atomic.Value
 	ok.Store(true)
-	r.fp, r.f, r.dataChan, r.Ok, r.wg, r.ctx = fp, f, make(chan []byte, runtime.NumCPU()), ok, wg, ctx
+	r.fp, r.f, r.dataChan, r.Ok, r.wg, r.ctx = fp, f, make(chan []byte, runtime.NumCPU()/2), ok, wg, ctx
 	return r, nil
 }
 

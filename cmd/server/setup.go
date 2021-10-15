@@ -4,8 +4,10 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"myclush/service"
 	"myclush/utils"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +26,8 @@ var (
 	debug bool
 	// 端口
 	port int
+	// pprof
+	pprof int
 )
 
 // 全局选项参数配置
@@ -48,6 +52,19 @@ var (
 		Value:   false,
 		Usage:   "run server on front",
 	}
+	globalFlagForMunalGC *cli.BoolFlag = &cli.BoolFlag{
+		Name:        "munalgc",
+		Aliases:     []string{"gc"},
+		Value:       false,
+		Usage:       "munal-gc",
+		Destination: &global.MunalGC,
+	}
+	globalFlagForPprof *cli.IntFlag = &cli.IntFlag{
+		Name:        "pprof",
+		Aliases:     []string{"pf"},
+		Usage:       "pprof web ui",
+		Destination: &pprof,
+	}
 )
 
 func run(ctx context.Context, cancel context.CancelFunc) error {
@@ -71,6 +88,8 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 			globalFlagForDebug,
 			globalFlagForPort,
 			globalFlagForFront,
+			globalFlagForMunalGC,
+			globalFlagForPprof,
 		},
 		Action: func(c *cli.Context) error {
 			if c.Bool("front") {
@@ -117,6 +136,11 @@ func Before(c *cli.Context) error {
 	if c.Bool("debug") {
 		log.SetLevel(log.DEBUG)
 	}
+	if c.Bool("munalgc") {
+		log.Info("enable put stream munal-gc")
+	} else {
+		log.Info("disable put stream munal-gc")
+	}
 	uid, gid, err := utils.UserInfo()
 	if err != nil {
 		return err
@@ -136,5 +160,17 @@ func Before(c *cli.Context) error {
 	}
 	global.ServerTransportCredentials = creds
 	// front run for log
+
+	// pprof
+	if c.Int("pprof") != 0 {
+		go func() {
+			if err := http.ListenAndServe(fmt.Sprintf(":%d", c.Int("pprof")), nil); err != nil {
+				log.Error("funcRetErr=http.ListenAndServe||err=%s", err.Error())
+			}
+		}()
+		log.Infof("enable pprof on %d\n", c.Int("pprof"))
+	} else {
+		log.Info("disable pprof")
+	}
 	return nil
 }

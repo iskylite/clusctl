@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"io"
+	"myclush/global"
 	log "myclush/logger"
 	"myclush/pb"
 	"myclush/utils"
@@ -17,6 +18,10 @@ import (
 )
 
 func (p *putStreamServer) PutStream(stream pb.RpcService_PutStreamServer) error {
+	if global.MunalGC {
+		defer log.Info("runtime.GC() end!")
+		defer runtime.GC()
+	}
 	// get authority
 	token, _ := getAuthorityByContext(stream.Context())
 	perRPCCredentials := grpc.WithPerRPCCredentials(&authority{sshKey: token})
@@ -138,6 +143,7 @@ LOOP:
 			if LocalNodeList == "" {
 				LocalNodeList = fmt.Sprintf("%s,%s", LocalNode, nodelist)
 			}
+			defer close(repliesChannel)
 			if status.Code(err) == codes.Canceled {
 				log.Error("Stream Recv Canceled Signal")
 				cancel()
@@ -146,6 +152,12 @@ LOOP:
 				log.Errorf("stream recv error: [%s]\n", err.Error())
 				repliesChannel <- newReply(false, utils.GrpcErrorMsg(err), LocalNodeList)
 			}
+
+			for _, stream := range streams {
+				stream.CloseDataChan()
+				log.Debugf("node=%s, Close DataChan\n", stream.GetBatchNode())
+			}
+
 			break LOOP
 		}
 	}
