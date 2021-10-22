@@ -63,7 +63,7 @@ func SetOutput(output io.Writer) {
 }
 
 func SetOutputFile(logFile string) (*os.File, error) {
-	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_RDWR, 0644)
+	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
 	if err != nil {
 		return f, err
 	}
