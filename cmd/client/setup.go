@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"myclush/service"
-	"myclush/utils"
 	"os"
 	"runtime"
 	"sort"
@@ -260,7 +259,7 @@ func Before(c *cli.Context) error {
 	if uid != "0" && gid != "0" {
 		return errors.New("permission denied, need root privileges")
 	}
-	// gen tls
+	gen tls
 	clientCreds, err := service.GenClientTransportCredentials()
 	if err != nil {
 		return err
