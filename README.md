@@ -10,7 +10,7 @@ go mod tidy
 
 安装 protoc，请自行下载，解压后将 protoc 文件目录添加到系统环境变量 PATH 中。
 
-## 配置TLS
+## 配置 TLS
 
 ```shell
 # 生成证书和私钥
@@ -44,11 +44,11 @@ make arm
 myclushd [-d|-f]
 ```
 
-* 参数说明:
+- 参数说明:
 
-  * -d    调试
+  - -d 调试
 
-  * -f    前台运行
+  - -f 前台运行，日志输出到屏幕
 
 ### 客户端
 
@@ -77,6 +77,14 @@ GLOBAL OPTIONS:
    --port value, -p value   grpc service port (default: 1995)
    --help, -h               show help (default: false)
    --version, -v            print the version (default: false)
+```
+
+目前可以使用 systemd 托管 myclushd 服务。
+
+```shell
+cp myclushd.service /etc/systemd/system
+systemctl daemon-reload
+systemctl enable --now myclushd
 ```
 
 #### 示例
@@ -155,10 +163,10 @@ Success
 
 ## 调试
 
-* 使用全局参数 **-d** 可以看到详细的执行信息，便于查找问题。
-* 服务端使用 **-f** 参数时myclushd运行在前端，日志将会打印到屏幕。否则myclushd运行在后台，日志输出到 **/var/log/myclushd.log**。
-* 客户端输出在屏幕。
+- 使用全局参数 **-d** 可以看到详细的执行信息，便于查找问题。
+- 服务端使用 **-f** 参数时 myclushd 运行在前端，日志将会打印到屏幕。否则 myclushd 运行在后台，日志输出到 **/var/log/myclushd.log**。
+- 客户端输出在屏幕。
 
 ## 测试运行
 
-实际运行中测试过32762个计算节点使用myclush拷贝数据和执行命令，运行无错误。其他暂未测试。
+实际运行中测试过 32762 个计算节点使用 myclush 拷贝数据和执行命令，运行无错误。其他暂未测试。

@@ -9,7 +9,6 @@ import (
 	"myclush/utils"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"time"
@@ -97,30 +96,31 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 				service.PutStreamServerServiceSetup(ctx, cancel, c.App.Name, port)
 				return nil
 			}
-			if _, ok := os.LookupEnv("MYCLUSH_DAEMON"); ok {
-				// app运行在子进程中
-				// 日志重定向
-				logFile := filepath.Join("/var/log", c.App.Name+".log")
-				f, err := log.SetOutputFile(logFile)
-				if err != nil {
-					return err
-				}
-				defer f.Close()
-				log.Infof("%s start \n", c.App.Name)
-				time.Sleep(2 * time.Second)
-				//运行
-				service.PutStreamServerServiceSetup(ctx, cancel, c.App.Name, port)
-			} else {
-				// 后台运行
-				env := os.Environ()
-				cmd := exec.Command(os.Args[0], os.Args[1:]...)
-				if _, ok := os.LookupEnv("HOME"); !ok {
-					env = append(env, "HOME=/root")
-				}
-				env = append(env, "MYCLUSH_DAEMON=on")
-				cmd.Env = env
-				return cmd.Start()
+			// 2021-12-17 取消后台运行
+			// if _, ok := os.LookupEnv("MYCLUSH_DAEMON"); ok {
+			// app运行在子进程中
+			// 日志重定向
+			logFile := filepath.Join("/var/log", c.App.Name+".log")
+			f, err := log.SetOutputFile(logFile)
+			if err != nil {
+				return err
 			}
+			defer f.Close()
+			log.Infof("%s start \n", c.App.Name)
+			time.Sleep(2 * time.Second)
+			//运行
+			service.PutStreamServerServiceSetup(ctx, cancel, c.App.Name, port)
+			// } else {
+			// 	// 后台运行
+			// 	env := os.Environ()
+			// 	cmd := exec.Command(os.Args[0], os.Args[1:]...)
+			// 	if _, ok := os.LookupEnv("HOME"); !ok {
+			// 		env = append(env, "HOME=/root")
+			// 	}
+			// 	env = append(env, "MYCLUSH_DAEMON=on")
+			// 	cmd.Env = env
+			// 	return cmd.Start()
+			// }
 			return nil
 		},
 	}
@@ -137,9 +137,9 @@ func Before(c *cli.Context) error {
 		log.SetLevel(log.DEBUG)
 	}
 	if c.Bool("munalgc") {
-		log.Info("enable put stream munal-gc")
+		log.Debug("enable put stream munal-gc")
 	} else {
-		log.Info("disable put stream munal-gc")
+		log.Debug("disable put stream munal-gc")
 	}
 	uid, gid, err := utils.UserInfo()
 	if err != nil {

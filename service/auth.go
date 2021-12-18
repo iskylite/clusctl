@@ -8,6 +8,7 @@ import (
 	"myclush/logger"
 	"myclush/utils"
 	"os"
+	"os/user"
 	"path/filepath"
 
 	"google.golang.org/grpc"
@@ -92,12 +93,18 @@ func LocalUserSSHKey() (string, error) {
 func CheckLocalSSHAuthorizedKeys(sshKeysMd5Str string) error {
 	// sometime UserHomeDir will panic: $HOME not defined
 	// homedir := "/root"
-	homedir, err := os.UserHomeDir()
+	user, err := user.Current()
 	if err != nil {
 		return err
 	}
-	authorized_keys := filepath.Join(homedir, ".ssh", "authorized_keys")
-	f, err := os.Open(authorized_keys)
+	homedir := user.HomeDir
+	// not use os.UerHomeDir to avoid $HOME not defined when control by systemd
+	// homedir, err := os.UserHomeDir()
+	// if err != nil {
+	// 	return err
+	// }
+	authorizedKeys := filepath.Join(homedir, ".ssh", "authorized_keys")
+	f, err := os.Open(authorizedKeys)
 	if err != nil {
 		return err
 	}
@@ -106,12 +113,12 @@ func CheckLocalSSHAuthorizedKeys(sshKeysMd5Str string) error {
 	if err != nil {
 		return err
 	}
-	all_authorized_keys := bytes.Split(content, []byte{'\n'})
-	for _, authorized_key := range all_authorized_keys {
-		if len(authorized_key) == 0 {
+	allAuthorizedKeys := bytes.Split(content, []byte{'\n'})
+	for _, authorizedKey := range allAuthorizedKeys {
+		if len(authorizedKey) == 0 {
 			continue
 		}
-		localMd5str := utils.Md5sum(bytes.TrimSpace(authorized_key))
+		localMd5str := utils.Md5sum(bytes.TrimSpace(authorizedKey))
 		if localMd5str == sshKeysMd5Str {
 			return nil
 		}
@@ -169,7 +176,7 @@ func SetAuthorityMetadata() (grpc.DialOption, error) {
 func clientIP(ctx context.Context) (string, error) {
 	p, ok := peer.FromContext(ctx)
 	if !ok {
-		return "", errors.New("no peer information exists!")
+		return "", errors.New("no peer information exists")
 	}
 	return p.Addr.String(), nil
 }
