@@ -1,0 +1,11 @@
+[Unit]
+Description=compute node control service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/myclushd
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
