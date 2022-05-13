@@ -1,6 +1,6 @@
 # myclush
 
-类似于 slurm 的多节点数据传输和命令执行（待定）
+应用于HPC的多节点数据传输和命令执行
 
 ## 初始化环境
 
@@ -26,9 +26,6 @@ cp conf/cert.* /var/lib/myclushd
 ## 编译
 
 ```shell
-# 编译protobuf
-make protoc
-
 # 编译x64
 make build
 
