@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var LocalNode string = utils.Hostname()
+// var LocalNode string
 
 type putStreamServer struct {
 	tmpDir     string

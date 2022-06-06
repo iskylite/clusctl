@@ -29,6 +29,7 @@ func (p *putStreamServer) PutStream(stream pb.RpcService_PutStreamServer) error 
 	var once sync.Once
 	var wg sync.WaitGroup
 	var LocalNodeList string
+	var LocalNode string
 	nodelist := ""
 	streams := make([]Wrapper, 0)
 	defer func() {
@@ -57,6 +58,8 @@ func (p *putStreamServer) PutStream(stream pb.RpcService_PutStreamServer) error 
 LOOP:
 	for {
 		data, err := stream.Recv()
+		// 替代本地主机名
+		LocalNode = data.GetNode()
 		switch err {
 		case io.EOF:
 			// 流结束

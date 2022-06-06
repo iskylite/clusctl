@@ -179,6 +179,7 @@ func (p *PutStreamClientService) Send(data []byte) error {
 		Location: p.destPath,
 		Body:     data,
 		Sn:       utils.Hostname(),
+		Node:     p.node,
 		Nodelist: p.nodelist,
 		Port:     p.port,
 		Width:    p.width,

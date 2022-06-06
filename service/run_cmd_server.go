@@ -12,6 +12,8 @@ import (
 )
 
 func (p *putStreamServer) RunCmd(req *pb.CmdReq, stream pb.RpcService_RunCmdServer) error {
+	// global context
+	localNode := req.GetNode()
 	// get authority
 	token, _ := getAuthorityByContext(stream.Context())
 	perRPCCredentials := grpc.WithPerRPCCredentials(&authority{sshKey: token})
@@ -31,8 +33,6 @@ func (p *putStreamServer) RunCmd(req *pb.CmdReq, stream pb.RpcService_RunCmdServ
 			log.Debugf("%s send reply from channel ok\n", reply.Nodelist)
 		}
 	}()
-	// global context
-	localNode := utils.Hostname()
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 	var wg sync.WaitGroup

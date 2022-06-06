@@ -41,6 +41,7 @@ type Wrapper interface {
 }
 
 type LocalWriterWrapper struct {
+	node           string
 	fp             string
 	f              *os.File
 	dataChan       chan []byte
@@ -73,6 +74,7 @@ func newLocalWriterWrapper(ctx context.Context, data *pb.PutStreamReq, tmpDir st
 	}
 	fp := filepath.Join(data.Location, data.Name)
 	r := new(LocalWriterWrapper)
+	r.node = data.GetNode()
 	var ok atomic.Value
 	ok.Store(true)
 	r.fp, r.f, r.dataChan, r.Ok, r.wg, r.ctx = fp, f, make(chan []byte, runtime.NumCPU()/2), ok, wg, ctx
@@ -111,9 +113,9 @@ func (l *LocalWriterWrapper) SendFromChannel() {
 	defer func() {
 		err := l.CloseAndRecv()
 		if err != nil {
-			l.repliesChannel <- newReply(false, err.Error(), LocalNode)
+			l.repliesChannel <- newReply(false, err.Error(), l.node)
 		} else {
-			l.repliesChannel <- newReply(true, "Success", LocalNode)
+			l.repliesChannel <- newReply(true, "Success", l.node)
 		}
 	}()
 	cnt := 0

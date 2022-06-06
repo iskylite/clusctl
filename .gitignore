@@ -10,8 +10,9 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
-*clush*
 .fuse_hidde*
 conf/cert.*
 .vscode
 .idea
+bin/*
+conf/cert*
