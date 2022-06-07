@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	log "myclush/logger"
 	_ "net/http/pprof"
 	"os"
@@ -16,7 +17,7 @@ var (
 func main() {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Error(err)
+			log.Error(fmt.Sprintf("%s\n", err))
 		}
 	}()
 	// signal handler

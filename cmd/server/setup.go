@@ -19,31 +19,19 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// 全局变量
-var (
-	// 调试模式
-	debug bool
-	// 端口
-	port int
-	// pprof
-	pprof int
-)
-
 // 全局选项参数配置
 var (
 	globalFlagForDebug *cli.BoolFlag = &cli.BoolFlag{
-		Name:        "debug",
-		Aliases:     []string{"d"},
-		Value:       false,
-		Usage:       "set log level debug",
-		Destination: &debug,
+		Name:    "debug",
+		Aliases: []string{"d"},
+		Value:   false,
+		Usage:   "set log level debug",
 	}
 	globalFlagForPort *cli.IntFlag = &cli.IntFlag{
-		Name:        "port",
-		Aliases:     []string{"p"},
-		Value:       1995,
-		Usage:       "grpc service port",
-		Destination: &port,
+		Name:    "port",
+		Aliases: []string{"p"},
+		Value:   1995,
+		Usage:   "grpc service `PORT`",
 	}
 	globalFlagForFront *cli.BoolFlag = &cli.BoolFlag{
 		Name:    "front",
@@ -59,10 +47,9 @@ var (
 		Destination: &global.MunalGC,
 	}
 	globalFlagForPprof *cli.IntFlag = &cli.IntFlag{
-		Name:        "pprof",
-		Aliases:     []string{"pf"},
-		Usage:       "pprof web ui",
-		Destination: &pprof,
+		Name:    "pprof",
+		Aliases: []string{"pf"},
+		Usage:   "pprof web ui",
 	}
 )
 
@@ -71,15 +58,15 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 		// 基本信息
 		// Name:     name,
 		// HelpName: name,
-		Version: global.Version,
+		Version: global.VERSION,
 		// Description: descriptions,
-		Usage: global.Descriptions,
+		Usage: global.DESC,
 		// 子命令执行前的设置
 		Before: Before,
 		Authors: []*cli.Author{
 			{
-				Name:  global.Author,
-				Email: global.Email,
+				Name:  global.AUTHOR,
+				Email: global.EMAIL,
 			},
 		},
 		// 全局选项参数配置
@@ -91,6 +78,7 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 			globalFlagForPprof,
 		},
 		Action: func(c *cli.Context) error {
+			port := c.Int("port")
 			if c.Bool("front") {
 				// 前台运行，输出结果到终端
 				service.PutStreamServerServiceSetup(ctx, cancel, c.App.Name, port)
@@ -132,6 +120,7 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 	return err
 }
 
+// Before pre handler
 func Before(c *cli.Context) error {
 	if c.Bool("debug") {
 		log.SetLevel(log.DEBUG)

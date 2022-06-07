@@ -57,13 +57,13 @@ func (p *PingClientService) Ping(ctx context.Context, node string) {
 		// log.Errorf("PingError %s: %s\n", node, utils.GrpcErrorMsg(err))
 	} else {
 		client := pb.NewRpcServiceClient(conn)
-		reply, err := client.Ping(ctx, &pb.CommonReq{Version: global.Version})
+		reply, err := client.Ping(ctx, &pb.CommonReq{Version: global.VERSION})
 		if err != nil {
 			p.replyChan <- newReply(false, utils.GrpcErrorMsg(err), node)
 			// log.Errorf("PingError %s: %s\n", node, utils.GrpcErrorMsg(err))
 		} else {
 			if reply.GetOk() {
-				p.replyChan <- newReply(true, global.Success, node)
+				p.replyChan <- newReply(true, global.SUCCESS, node)
 			} else {
 				p.replyChan <- newReply(false, "Version Unmatched", node)
 				// log.Errorf("PingError %s: Version Unmatched\n", node)

@@ -16,192 +16,106 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// 全局变量
-var (
-	// 指定agent节点列表
-	nodes string
-	// 调试模式
-	debug bool
-	// 端口
-	port int
-	// 是否有颜色输出
-	color bool
-)
-
 // 全局选项参数配置
 var (
 	globalFlagForNodes *cli.StringFlag = &cli.StringFlag{
-		Name:        "nodes",
-		Aliases:     []string{"n"},
-		Usage:       "app agent nodes list",
-		Destination: &nodes,
+		Name:    "nodes",
+		Aliases: []string{"n"},
+		Usage:   "`NODES` where to run the command",
+	}
+	globalFlagForHostFile *cli.StringFlag = &cli.StringFlag{
+		Name:    "hostfile",
+		Aliases: []string{"H"},
+		Usage:   "path to `FILE` containing a list of target hosts",
 	}
 	globalFlagForDebug *cli.BoolFlag = &cli.BoolFlag{
-		Name:        "debug",
-		Aliases:     []string{"d"},
-		Value:       false,
-		Usage:       "set log level debug",
-		Destination: &debug,
+		Name:    "debug",
+		Aliases: []string{"D"},
+		Value:   false,
+		Usage:   "set log level debug",
 	}
 	globalFlagForPort *cli.IntFlag = &cli.IntFlag{
-		Name:        "port",
-		Aliases:     []string{"p"},
-		Value:       1995,
-		Usage:       "grpc service port",
-		Destination: &port,
+		Name:    "port",
+		Aliases: []string{"P"},
+		Value:   1995,
+		Usage:   "grpc service `PORT`",
 	}
 	globalFlagForColor *cli.BoolFlag = &cli.BoolFlag{
-		Name:        "disablecolor",
-		Aliases:     []string{"dc"},
-		Value:       false,
-		Usage:       "disable log color print",
-		Destination: &color,
+		Name:    "disablecolor",
+		Aliases: []string{"dc"},
+		Value:   false,
+		Usage:   "disable log color print",
 	}
-)
-
-// 子命令设置
-var (
+	globalFlagForWidth *cli.IntFlag = &cli.IntFlag{
+		Name:    "width",
+		Aliases: []string{"w"},
+		Value:   2,
+		Usage:   "transport tree `WIDTH` for multi workers",
+	}
 	// 客户端健康检查子命令 ping
 	// 子命令 ping 的参数配置
-	pingFlagForWorkers *cli.IntFlag = &cli.IntFlag{
-		Name:    "workers",
-		Aliases: []string{"w"},
-		Value:   runtime.NumCPU(),
-		Usage:   "ping goroutine counts at the same time",
+	// 子命令 ping 配置
+	globalFlagForPing *cli.BoolFlag = &cli.BoolFlag{
+		Name:    "ping",
+		Aliases: []string{"p"},
+		Value:   false,
+		Usage:   "[action] check all agent status",
 	}
 	pingFlagForTimeout *cli.IntFlag = &cli.IntFlag{
 		Name:    "timeout",
 		Aliases: []string{"t"},
 		Value:   1,
-		Usage:   "timeout for check agent status",
+		Usage:   "`TIMEOUT` for ping",
 	}
-	// 子命令 ping 配置
-	pingCommandConfig *cli.Command = &cli.Command{
-		Name:    "ping",
-		Aliases: []string{"P"},
-		Usage:   "check all agent status",
-		Flags: []cli.Flag{
-			pingFlagForWorkers,
-			pingFlagForTimeout,
-		},
-		Action: func(c *cli.Context) error {
-			service.PingClientServiceSetup(ctx, nodes, port, c.Int("workers"), c.Int("timeout"))
-			return nil
-		},
+
+	pingFlagForFanout *cli.IntFlag = &cli.IntFlag{
+		Name:    "fanout",
+		Aliases: []string{"f"},
+		Value:   runtime.NumCPU(),
+		Usage:   "use a specified `FANOUT` for ping",
+	}
+	globalFlagForOutput *cli.StringFlag = &cli.StringFlag{
+		Name:    "output",
+		Aliases: []string{"o"},
+		Usage:   "dump rcopy or command output into log `FILE`",
 	}
 	// 远程拷贝文件子命令 rcopy
 	// 子命令 rcopy 的参数配置
-	rcopyFlagForFile *cli.StringFlag = &cli.StringFlag{
-		Name:     "file",
-		Aliases:  []string{"f"},
-		Usage:    "local `FILE` path",
-		Required: true,
+	globalFlagForRCopy *cli.StringFlag = &cli.StringFlag{
+		Name:    "rcopy",
+		Aliases: []string{"r"},
+		Usage:   "[action] local `FILE` path",
 	}
 	rcopyFlagForDestdir *cli.StringFlag = &cli.StringFlag{
 		Name:    "dest",
 		Aliases: []string{"d"},
 		Usage:   "dest `DIR` on remote host",
-		Value:   "/tmp",
-	}
-	rcopyFlagForWidth *cli.IntFlag = &cli.IntFlag{
-		Name:    "width",
-		Aliases: []string{"w"},
-		Usage:   "B+ tree width for transmission data",
-		Value:   50,
+		Value:   global.PWD,
 	}
 	rcopyFlagForBufferSize *cli.StringFlag = &cli.StringFlag{
 		Name:    "size",
-		Aliases: []string{"b", "s"},
-		Usage:   "payload size (eg: 51200, 512k, 1m) in rpc package",
+		Aliases: []string{"s"},
+		Usage:   "payload `SIZE` (eg: 51200, 512k, 1m)",
 		Value:   "2M",
-	}
-	rcopyFlagForOutput *cli.StringFlag = &cli.StringFlag{
-		Name:    "output",
-		Aliases: []string{"o"},
-		Usage:   "dump output into log file",
-	}
-	// 子命令 rcopy 配置
-	rcopyCommandConfig *cli.Command = &cli.Command{
-		Name:    "rcopy",
-		Aliases: []string{"rc", "r"},
-		Usage:   "copy local file to remote host by grpc service",
-		Flags: []cli.Flag{
-			rcopyFlagForFile,
-			rcopyFlagForBufferSize,
-			rcopyFlagForDestdir,
-			rcopyFlagForWidth,
-			rcopyFlagForOutput,
-		},
-		Action: func(c *cli.Context) error {
-			logfile := c.String("output")
-			if logfile != "" {
-				f, err := log.SetOutputFile(logfile)
-				if err != nil {
-					return err
-				}
-				defer f.Close()
-				log.Infof("start: %v\n", os.Args[:])
-			}
-			service.PutStreamClientServiceSetup(ctx, cancel, c.String("file"), c.String("dest"), nodes, c.String("size"), port, c.Int("width"))
-			return nil
-		},
 	}
 	// 远程执行子命令 exec
 	// 子命令exec 参数配置
-	execFlagForCmd *cli.StringFlag = &cli.StringFlag{
-		Name:     "cmd",
-		Aliases:  []string{"c"},
-		Required: true,
-		Usage:    "linux shell command to run",
+	globalFlagForCommand *cli.StringFlag = &cli.StringFlag{
+		Name:    "command",
+		Aliases: []string{"c"},
+		Usage:   "[action] linux shell `COMMAND` to run",
 	}
-	execFlagForWidth *cli.IntFlag = &cli.IntFlag{
-		Name:    "width",
-		Aliases: []string{"w"},
-		Usage:   "B+ tree width for executing command",
-		Value:   50,
-	}
-	execFlagForList *cli.BoolFlag = &cli.BoolFlag{
+	commandFlagForList *cli.BoolFlag = &cli.BoolFlag{
 		Name:    "list",
 		Aliases: []string{"l"},
 		Usage:   "sort command output by node list",
 		Value:   false,
 	}
-	execFlagForBackground *cli.BoolFlag = &cli.BoolFlag{
+	commandFlagForBackground *cli.BoolFlag = &cli.BoolFlag{
 		Name:    "background",
 		Aliases: []string{"b"},
 		Usage:   "run cmd in background",
 		Value:   false,
-	}
-	execFlagForOutput *cli.StringFlag = &cli.StringFlag{
-		Name:    "output",
-		Aliases: []string{"o"},
-		Usage:   "dump output into log file",
-	}
-	// 子命令 exec 配置
-	execCommandConfig *cli.Command = &cli.Command{
-		Name:    "execute",
-		Aliases: []string{"exec", "e"},
-		Usage:   "execute linux shell command on remote host",
-		Flags: []cli.Flag{
-			execFlagForCmd,
-			execFlagForList,
-			execFlagForWidth,
-			execFlagForBackground,
-			execFlagForOutput,
-		},
-		Action: func(c *cli.Context) error {
-			logfile := c.String("output")
-			if logfile != "" {
-				f, err := log.SetOutputFile(logfile)
-				if err != nil {
-					return err
-				}
-				defer f.Close()
-				log.Infof("start: %v\n", os.Args[:])
-			}
-			service.RunCmdClientServiceSetup(ctx, cancel, c.String("cmd"), nodes, c.Int("width"), port, c.Bool("list"), c.Bool("background"))
-			return nil
-		},
 	}
 )
 
@@ -210,47 +124,92 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 		// 基本信息
 		// Name:     name,
 		// HelpName: name,
-		Version: global.Version,
+		Version: global.VERSION,
 		// Description: descriptions,
-		Usage: global.Descriptions,
+		Usage: global.DESC,
 		// 子命令执行前的设置
 		Before: Before,
 		Authors: []*cli.Author{
 			{
-				Name:  global.Author,
-				Email: global.Email,
+				Name:  global.AUTHOR,
+				Email: global.EMAIL,
 			},
 		},
 		// 全局选项参数配置
 		Flags: []cli.Flag{
 			globalFlagForNodes,
+			globalFlagForHostFile,
 			globalFlagForDebug,
 			globalFlagForPort,
 			globalFlagForColor,
+			globalFlagForPing,
+			globalFlagForCommand,
+			globalFlagForRCopy,
+			globalFlagForWidth,
+			globalFlagForOutput,
+			// ping
+			pingFlagForTimeout,
+			pingFlagForFanout,
+			// rcopy
+			rcopyFlagForBufferSize,
+			rcopyFlagForDestdir,
+			// command
+			commandFlagForBackground,
+			commandFlagForList,
 		},
 		// 子命令配置
-		Commands: []*cli.Command{
-			pingCommandConfig,
-			rcopyCommandConfig,
-			execCommandConfig,
+		Action: func(c *cli.Context) error {
+			nodes, err := getNodes(c)
+			if err != nil {
+				return err
+			}
+			port := c.Int("port")
+			if c.Bool("ping") {
+				service.PingClientServiceSetup(ctx, nodes, port, c.Int("fanout"), c.Int("timeout"))
+			} else if c.String("rcopy") != "" {
+				logfile := c.String("output")
+				if logfile != "" {
+					f, err := log.SetOutputFile(logfile)
+					if err != nil {
+						return err
+					}
+					defer f.Close()
+					log.Infof("start: %v\n", os.Args[:])
+				}
+				service.PutStreamClientServiceSetup(ctx, cancel, c.String("rcopy"), c.String("dest"), nodes,
+					c.String("size"), port, c.Int("width"))
+			} else if c.String("command") != "" {
+				logfile := c.String("output")
+				if logfile != "" {
+					f, err := log.SetOutputFile(logfile)
+					if err != nil {
+						return err
+					}
+					defer f.Close()
+					log.Infof("start: %v\n", os.Args[:])
+				}
+				service.RunCmdClientServiceSetup(ctx, cancel, c.String("command"), nodes, c.Int("width"),
+					port, c.Bool("list"), c.Bool("background"))
+			}
+			return nil
 		},
 	}
 
 	sort.Sort(cli.FlagsByName(app.Flags))
-	sort.Sort(cli.CommandsByName(app.Commands))
 
 	err := app.Run(os.Args)
 	return err
 }
 
+// Before pre handler
 func Before(c *cli.Context) error {
 	// log debug
 	log.SetLogLevel(c.Bool("debug"))
 	if c.Bool("disablecolor") {
 		log.DisableColor()
 	}
-	if c.String("nodes") == "" {
-		return errors.New("flag \"--nodes\" or \"-r\" not provide")
+	if err := handleExclusiveArgs(c); err != nil {
+		return err
 	}
 	// root privileges
 	uid, gid, err := utils.UserInfo()
@@ -258,7 +217,7 @@ func Before(c *cli.Context) error {
 		return err
 	}
 	if uid != "0" && gid != "0" {
-		return errors.New("permission denied, need root privileges")
+		return errors.New("Usage: permission denied, need root privileges")
 	}
 	// gen tls
 	clientCreds, err := service.GenClientTransportCredentials()
@@ -273,4 +232,45 @@ func Before(c *cli.Context) error {
 	}
 	global.Authority = authority
 	return nil
+}
+
+// handleExclusiveArgs 互斥参数检查
+func handleExclusiveArgs(c *cli.Context) error {
+	var count int
+	if c.Bool("ping") {
+		count++
+	}
+	if c.String("rcopy") != "" {
+		count++
+	}
+	if c.String("command") != "" {
+		count++
+	}
+
+	if count > 1 {
+		// 不能同时指定ping、command和rcopy
+		return errors.New("Usage: only one action need")
+	}
+	if c.String("nodes") != "" && c.String("hostfile") != "" {
+		// 不可同时指定nodes和hostfile
+		return errors.New("Usage: one of --nodes/-n and --hostfile/-H option need")
+	}
+	return nil
+}
+
+// getNodes 获取节点列表
+func getNodes(c *cli.Context) (string, error) {
+	nodes := c.String("nodes")
+	if nodes == "" {
+		hostFile := c.String("hostfile")
+		if hostFile == "" {
+			return nodes, errors.New("Usage: one of --nodes/-n and --hostfile/-H option need")
+		}
+		nodeList, err := utils.ExpNodesFromFile(hostFile)
+		if err != nil {
+			return nodes, err
+		}
+		nodes = utils.Merge(nodeList...)
+	}
+	return nodes, nil
 }

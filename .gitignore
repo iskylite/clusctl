@@ -14,5 +14,7 @@
 conf/cert.*
 .vscode
 .idea
-bin/*
+bin/clusctl*
 conf/cert*
+build
+*.rpm

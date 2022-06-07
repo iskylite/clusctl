@@ -8,9 +8,9 @@ import (
 )
 
 func (p *putStreamServer) Ping(ctx context.Context, req *pb.CommonReq) (*pb.CommonResp, error) {
-	if req.GetVersion() == global.Version {
+	if req.GetVersion() == global.VERSION {
 		return &pb.CommonResp{Ok: true}, nil
 	}
-	log.Errorf("[ping] server: %s, client: %s\n", global.Version, req.GetVersion())
+	log.Errorf("[ping] server: %s, client: %s\n", global.VERSION, req.GetVersion())
 	return &pb.CommonResp{Ok: false}, nil
 }

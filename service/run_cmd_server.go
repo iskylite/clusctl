@@ -49,7 +49,7 @@ func (p *putStreamServer) RunCmd(req *pb.CmdReq, stream pb.RpcService_RunCmdServ
 				log.Debugf("Finish Command %s\n", req.Cmd)
 				// wait for daemon process to exit, fix bash defunct process
 				go cmd.Wait()
-				repliesChannel <- newReply(true, global.Success, localNode)
+				repliesChannel <- newReply(true, global.SUCCESS, localNode)
 			}
 		} else {
 			log.Debugf("Start Command [%s]\n", req.Cmd)

@@ -1,6 +1,9 @@
 package utils
 
 import (
+	"bufio"
+	"os"
+
 	"github.com/iskylite/nodeset"
 )
 
@@ -22,4 +25,19 @@ func Merge(nodes ...string) string {
 
 func SplitNodesByWidth(nodes []string, width int32) [][]string {
 	return nodeset.Split(nodes, int(width))
+}
+
+// ExpNodesFromFile read node or ip from hostfile
+func ExpNodesFromFile(file string) ([]string, error) {
+	fp, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	NodeList := make([]string, 0)
+	buffer := bufio.NewScanner(fp)
+	for buffer.Scan() {
+		line := buffer.Text()
+		NodeList = append(NodeList, line)
+	}
+	return NodeList, nil
 }

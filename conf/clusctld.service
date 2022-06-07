@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/sbin/myclushd
+ExecStart=/usr/sbin/clusctld
 Restart=on-failure
 
 [Install]

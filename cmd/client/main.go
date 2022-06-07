@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	log "myclush/logger"
 	"os"
 	"os/signal"
@@ -14,11 +15,11 @@ var (
 
 func main() {
 	// remove recover to get panic strace
-	// defer func() {
-	// 	if err := recover(); err != nil {
-	// 		log.Error(err)
-	// 	}
-	// }()
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error(fmt.Sprintf("%s\n", err))
+		}
+	}()
 	// signal handler
 	ctx, cancel = context.WithCancel(context.Background())
 	c := make(chan os.Signal, 1)
