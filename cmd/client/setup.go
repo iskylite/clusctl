@@ -117,6 +117,25 @@ var (
 		Usage:   "run cmd in background",
 		Value:   false,
 	}
+	// multi nodes expand and Merge
+	globalFlagForExpand *cli.BoolFlag = &cli.BoolFlag{
+		Name:    "expand",
+		Aliases: []string{"e"},
+		Usage:   "expand nodes to multi node inline",
+		Value:   false,
+	}
+	globalFlagForMultiExpand *cli.BoolFlag = &cli.BoolFlag{
+		Name:    "multi-expand",
+		Aliases: []string{"E"},
+		Usage:   "expand nodes to multi node in multi-lines",
+		Value:   false,
+	}
+	// globalFlagForExclusive *cli.BoolFlag = &cli.BoolFlag{
+	// 	Name:    "exclude",
+	// 	Aliases: []string{"x"},
+	// 	Usage:   "exclude nodes from the node list",
+	// 	Value:   false,
+	// }
 )
 
 func run(ctx context.Context, cancel context.CancelFunc) error {
@@ -156,6 +175,10 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 			// command
 			commandFlagForBackground,
 			commandFlagForList,
+			// nodeset
+			globalFlagForExpand,
+			globalFlagForMultiExpand,
+			// globalFlagForMerge,
 		},
 		// 子命令配置
 		Action: func(c *cli.Context) error {
@@ -190,7 +213,11 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 				}
 				service.RunCmdClientServiceSetup(ctx, cancel, c.String("command"), nodes, c.Int("width"),
 					port, c.Bool("list"), c.Bool("background"))
+			} else {
+				// nodeset
+				return service.NewNodeSet(nodes, c.Bool("expand"), c.Bool("multi-expand")).Echo()
 			}
+
 			return nil
 		},
 	}

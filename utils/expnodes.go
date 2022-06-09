@@ -3,6 +3,7 @@ package utils
 import (
 	"bufio"
 	"os"
+	"strings"
 
 	"github.com/iskylite/nodeset"
 )
@@ -37,6 +38,10 @@ func ExpNodesFromFile(file string) ([]string, error) {
 	buffer := bufio.NewScanner(fp)
 	for buffer.Scan() {
 		line := buffer.Text()
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			// filter comment
+			continue
+		}
 		NodeList = append(NodeList, line)
 	}
 	return NodeList, nil
