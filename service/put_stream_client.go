@@ -107,7 +107,7 @@ func (p *PutStreamClientService) GetStream() pb.RpcService_PutStreamClient {
 }
 
 func (p *PutStreamClientService) CloseConn() {
-	log.Debugf("close conn %s\n", p.node)
+	log.Debugf("close conn to node %s\n", p.node)
 	p.conn.Close()
 }
 
@@ -148,7 +148,7 @@ func (p *PutStreamClientService) checkConn(ctx context.Context, node string, aut
 }
 
 // 生成grpc流
-func (p *PutStreamClientService) GenStreamWithContext(ctx context.Context, authority grpc.DialOption) ([]string, error) {
+func (p *PutStreamClientService) GenStreamWithContext(ctx context.Context, authority grpc.DialOption) ([]string, string, error) {
 	nodes := utils.ExpNodes(p.nodelist)
 	p.num = len(nodes)
 	down := make([]string, 0)
@@ -168,7 +168,7 @@ func (p *PutStreamClientService) GenStreamWithContext(ctx context.Context, autho
 	}
 	// 只要有一个连接成功，那么err就会被赋值为nil，否则则是连接失败的错误
 	// 故当err为错误的时候，所有节点都连接失败
-	return down, err
+	return down, p.node, err
 }
 
 // 发送数据
@@ -296,12 +296,14 @@ func PutStreamClientServiceSetup(ctx context.Context, cancel func(), localFile, 
 		return
 	}
 	resps := make([]*pb.Reply, 0)
-	down, err := clientService.GenStreamWithContext(ctx, global.Authority)
+	down, node, err := clientService.GenStreamWithContext(ctx, global.Authority)
 	if err != nil {
 		log.Errorf("PutStreamClientService Failed, err=[%s]\n",
 			status.Code(err).String())
 		return
 	}
+
+	log.Debugf("Server Stream Client [%s] Setup Success", node)
 	defer clientService.CloseConn()
 	// 获取运行状态下未获取到响应的节点
 	go func() {

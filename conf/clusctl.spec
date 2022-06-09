@@ -1,6 +1,6 @@
 %define name clusctl
-%define version 1.6.0
-%define release 1
+%define version 1.6.1
+%define release 2
 
 Summary: %{name} - HPC Cluster Control And Manage Tools
 Name: %{name}
@@ -46,7 +46,7 @@ GLOBAL OPTIONS:
    --timeout value, -t value  timeout for ping (default: 1)
    --workers value, -w value  multi open workers (default: 64)
    --help, -h                 show help (default: false)
-   --version, -v              print the version (default: false)
+   --version, -v              print the version 1.6.1
 
 
 %prep

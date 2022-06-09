@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"io"
 	log "myclush/logger"
 	"myclush/pb"
@@ -17,6 +18,7 @@ import (
 )
 
 type StreamWrapper struct {
+	ctx            context.Context
 	Ok             atomic.Value
 	stream         *PutStreamClientService
 	dataChan       chan []byte
@@ -25,8 +27,9 @@ type StreamWrapper struct {
 	err            error
 }
 
-func newStreamWrapper(ctx context.Context, filename, destPath, port string, nodes []string, width int32, wg *sync.WaitGroup, authority grpc.DialOption) (*StreamWrapper, []string, error) {
+func newStreamWrapper(ctx context.Context, filename, destPath, port string, nodes []string, width int32, wg *sync.WaitGroup, authority grpc.DialOption) (*StreamWrapper, []string, string, error) {
 	nodelist := utils.Merge(nodes...)
+	var node string
 	stream := &PutStreamClientService{
 		filename: filename,
 		destPath: destPath,
@@ -35,13 +38,13 @@ func newStreamWrapper(ctx context.Context, filename, destPath, port string, node
 		// node:     nodes[0],
 		width: width,
 	}
-	down, err := stream.GenStreamWithContext(ctx, authority)
+	down, node, err := stream.GenStreamWithContext(ctx, authority)
 	if err != nil {
-		return nil, down, err
+		return nil, down, node, err
 	}
 	var ok atomic.Value
 	ok.Store(true)
-	return &StreamWrapper{ok, stream, make(chan []byte, runtime.NumCPU()/2), nil, wg, nil}, down, nil
+	return &StreamWrapper{ctx, ok, stream, make(chan []byte, runtime.NumCPU()), nil, wg, nil}, down, node, nil
 }
 
 func (s *StreamWrapper) SetFileInfo(uid, gid, filemod uint32, modtime int64) {
@@ -53,6 +56,7 @@ func (s *StreamWrapper) DiscribeRepliesChannel(repliesChannel chan *pb.Reply) {
 }
 
 func (s *StreamWrapper) SetBad() {
+	log.Infof("[%s] set bad\n", s.stream.node)
 	s.Ok.Store(false)
 }
 
@@ -89,29 +93,49 @@ func (s *StreamWrapper) SendFromChannel() {
 			switch err {
 			case nil:
 				s.repliesChannel <- data
-				log.Debugf("node=%s, into replay=%s\n", data.Nodelist, data.Msg)
+				log.Debugf("node=%s, type=into ,replay=%s\n", data.Nodelist, data.Msg)
 			case io.EOF:
 				log.Debug("client service recv EOF")
 				break LOOP
 			default:
 				s.SetBad()
-				log.Error(utils.GrpcErrorMsg(err))
+				log.Errorf("msg=%s\n", utils.GrpcErrorMsg(err))
+				s.repliesChannel <- newReply(false, utils.GrpcErrorMsg(err), s.GetAllNodelist())
 				break LOOP
 			}
 		}
 	}()
+	cnt := 0
+LOOP:
 	for {
-		data, ok := <-s.dataChan
-		if !ok {
-			log.Debugf("send close signal to %s\n", s.GetBatchNode())
-			s.stream.stream.CloseSend()
-			break
-		}
-		if err := s.Send(data); err != nil {
-			log.Error(err)
+		select {
+		case <-s.ctx.Done():
 			s.SetBad()
-			s.repliesChannel <- newReply(false, utils.GrpcErrorMsg(err), s.GetAllNodelist())
-			break
+			errMsg := fmt.Sprintf("%s break [%d], cancel from context\n", s.GetBatchNode(), cnt)
+			log.Error(errMsg)
+			s.err = status.Error(codes.Canceled, errMsg)
+			break LOOP
+		case data, ok := <-s.dataChan:
+			if !ok {
+				log.Debugf("send close signal to %s\n", s.GetBatchNode())
+				s.stream.stream.CloseSend()
+				break LOOP
+			}
+			cnt++
+			if !s.Ok.Load().(bool) {
+				// cancel时先setbad
+				log.Debugf("%s break [%d], abort send data\n", s.GetBatchNode(), cnt)
+				break LOOP
+			}
+			if err := s.Send(data); err != nil {
+				log.Error(err)
+				s.SetBad()
+				if err == io.EOF {
+					break LOOP
+				}
+				s.repliesChannel <- newReply(false, utils.GrpcErrorMsg(err), s.GetAllNodelist())
+				break LOOP
+			}
 		}
 	}
 	waitc.Wait()
@@ -140,6 +164,7 @@ func (s *StreamWrapper) RecvData(data []byte) {
 }
 
 func (s *StreamWrapper) CloseDataChan() {
+	log.Infof("close dataChan to [%s]\n", s.stream.node)
 	close(s.dataChan)
 }
 
@@ -149,4 +174,11 @@ func (s *StreamWrapper) CloseConn() {
 
 func (s *StreamWrapper) IsLocal() bool {
 	return false
+}
+
+// CleanDataChan clear all data in dataChan
+func (s *StreamWrapper) CleanDataChan() {
+	log.Infof("clear dataChan to [%s]\n", s.stream.node)
+	for range s.dataChan {
+	}
 }

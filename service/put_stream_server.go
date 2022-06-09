@@ -36,7 +36,7 @@ func (p *putStreamServer) PutStream(stream pb.RpcService_PutStreamServer) error 
 		for _, stream := range streams {
 			stream.CloseConn()
 		}
-		log.Info("stop putStream server")
+		log.Info("PutStream Server Finished !!!")
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -99,15 +99,13 @@ LOOP:
 				// 初始化分发流客户端
 				splitNodes := utils.SplitNodesByWidth(utils.ExpNodes(nodelist), data.Width)
 				for _, nodes := range splitNodes {
-					log.Debug(nodes)
 					if len(nodes) == 0 {
 						continue
 					}
-					addr := fmt.Sprintf("%s:%s", nodes[0], data.Port)
 					// 只要有一个连接成功就不会返回错误
-					stream, down, err := newStreamWrapper(ctx, data.Name, data.Location, data.Port, nodes, data.Width, &wg, perRPCCredentials)
+					stream, down, node, err := newStreamWrapper(ctx, data.Name, data.Location, data.Port, nodes, data.Width, &wg, perRPCCredentials)
 					if err != nil {
-						log.Errorf("Server Stream Client [%s] Setup Failed\n", addr)
+						log.Errorf("Server Stream Client [%s] Setup Failed\n", utils.Merge(nodes...))
 						repliesChannel <- newReply(false,
 							utils.GrpcErrorMsg(err), utils.Merge(nodes...))
 						continue
@@ -117,7 +115,7 @@ LOOP:
 					}
 					stream.SetFileInfo(data.Uid, data.Gid, data.Filemod, data.Modtime)
 					wg.Add(1)
-					log.Infof("Server Stream Client [%s] Setup Success", addr)
+					log.Infof("Server Stream Client [%s] Setup Success", node)
 					streams = append(streams, stream)
 					stream.DiscribeRepliesChannel(repliesChannel)
 					go stream.SendFromChannel()
@@ -146,19 +144,29 @@ LOOP:
 			if LocalNodeList == "" {
 				LocalNodeList = fmt.Sprintf("%s,%s", LocalNode, nodelist)
 			}
-			defer close(repliesChannel)
+			defer func() {
+				close(repliesChannel)
+				log.Info("close repliesChannel")
+			}()
 			if status.Code(err) == codes.Canceled {
-				log.Error("Stream Recv Canceled Signal")
+				for _, stream := range streams {
+					stream.SetBad()
+				}
+				log.Info("gRPC receive canceled signal, cancel all stream")
 				cancel()
+				for _, stream := range streams {
+					stream.CloseDataChan()
+					stream.CleanDataChan()
+				}
 				return nil
-			} else {
-				log.Errorf("stream recv error: [%s]\n", err.Error())
-				repliesChannel <- newReply(false, utils.GrpcErrorMsg(err), LocalNodeList)
 			}
+			log.Errorf("stream recv error: [%s]\n", err.Error())
+			repliesChannel <- newReply(false, utils.GrpcErrorMsg(err), LocalNodeList)
 
 			for _, stream := range streams {
+				stream.SetBad()
 				stream.CloseDataChan()
-				log.Debugf("node=%s, Close DataChan\n", stream.GetBatchNode())
+				stream.CleanDataChan()
 			}
 
 			break LOOP

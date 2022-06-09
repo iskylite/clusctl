@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"time"
 
@@ -51,6 +52,13 @@ var (
 		Aliases: []string{"pf"},
 		Usage:   "pprof web ui",
 	}
+	globalFlagForBuffer *cli.IntFlag = &cli.IntFlag{
+		Name:        "buffer",
+		Aliases:     []string{"b"},
+		Usage:       "memory buffer lenth",
+		Value:       runtime.NumCPU() / 2,
+		Destination: &global.Buffers,
+	}
 )
 
 func run(ctx context.Context, cancel context.CancelFunc) error {
@@ -76,6 +84,7 @@ func run(ctx context.Context, cancel context.CancelFunc) error {
 			globalFlagForFront,
 			globalFlagForMunalGC,
 			globalFlagForPprof,
+			globalFlagForBuffer,
 		},
 		Action: func(c *cli.Context) error {
 			port := c.Int("port")

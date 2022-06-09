@@ -10,7 +10,7 @@ import (
 // 全局基本配置
 const (
 	APP     string = "clusctl"
-	VERSION string = "v1.6.0"
+	VERSION string = "v1.6.1"
 	AUTHOR  string = "iskylite"
 	EMAIL   string = "yantao0905@outlook.com"
 	DESC    string = "HPC Cluster Manager Tools"
@@ -28,6 +28,8 @@ var (
 	MunalGC bool // 是否手动gc
 	// PWD local path
 	PWD string
+	// Buffers dataChan length
+	Buffers int
 )
 
 var (
