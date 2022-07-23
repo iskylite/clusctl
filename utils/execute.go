@@ -10,7 +10,7 @@ import (
 )
 
 func addEnv(cmdStr string) string {
-	return fmt.Sprintf("source ~/.bashrc; %s", cmdStr)
+	return fmt.Sprintf("source ~/.bashrc >& /dev/null; %s", cmdStr)
 }
 
 func RunShellCmd(cmdStr string) (string, bool) {
