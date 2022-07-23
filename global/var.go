@@ -10,7 +10,7 @@ import (
 // 全局基本配置
 const (
 	APP     string = "clusctl"
-	VERSION string = "v1.6.1"
+	VERSION string = "v1.6.2"
 	AUTHOR  string = "iskylite"
 	EMAIL   string = "yantao0905@outlook.com"
 	DESC    string = "HPC Cluster Manager Tools"

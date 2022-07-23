@@ -19,3 +19,5 @@ conf/cert*
 build
 *.rpm
 main
+clusctl
+clusctld

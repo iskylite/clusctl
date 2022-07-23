@@ -1,10 +1,10 @@
 PHONY: help
 
 APP = clusctl
-VERSION = 1.6.1
+VERSION = 1.6.2
 BUILDPATH = build
 ARCH = `uname -m`
-RELEASE = 2
+RELEASE = 0
 
 protoc:
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=require_unimplemented_servers=false:. --go-grpc_opt=paths=source_relative pb/stream.proto
