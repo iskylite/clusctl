@@ -26,7 +26,7 @@ rpm:
 	ls conf/{cert.key,cert.pem} || make tls-centos
 	@echo "abort make tls-centos"
 	sed -i "s/VERSION\ string\ =\ .*/VERSION\ string\ =\ \"v${VERSION}\"/g" global/var.go
-	make build
+	make x64
 	mkdir -p ${BUILDPATH}/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
 	mkdir -p ${BUILDPATH}/BUILD/${APP}-${VERSION}
 	mkdir -p ${BUILDPATH}/BUILD/${APP}-${VERSION}/usr/sbin
