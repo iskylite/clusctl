@@ -3,17 +3,22 @@ package utils
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os/exec"
 	"strings"
 	"time"
 )
+
+func addEnv(cmdStr string) string {
+	return fmt.Sprintf("source ~/.bashrc; %s", cmdStr)
+}
 
 func RunShellCmd(cmdStr string) (string, bool) {
 	return RunShellCmdWithContext(context.TODO(), cmdStr)
 }
 
 func RunShellCmdWithContext(ctx context.Context, cmdStr string) (string, bool) {
-	cmd := exec.CommandContext(ctx, "/bin/bash", "-c", cmdStr)
+	cmd := exec.CommandContext(ctx, "/bin/bash", "-c", addEnv(cmdStr))
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
@@ -30,7 +35,7 @@ func ExecuteShellCmd(cmdStr string) (string, bool) {
 }
 
 func ExecuteShellCmdWithContext(ctx context.Context, cmdStr string) (string, bool) {
-	cmd := exec.CommandContext(ctx, "/bin/bash", "-c", cmdStr)
+	cmd := exec.CommandContext(ctx, "/bin/bash", "-c", addEnv(cmdStr))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if len(out) == 0 {
@@ -44,7 +49,7 @@ func ExecuteShellCmdWithContext(ctx context.Context, cmdStr string) (string, boo
 func ExecuteShellCmdWithTimeout(cmdStr string, timeout int) (string, bool) {
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(timeout)*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "/bin/bash", "-c", cmdStr)
+	cmd := exec.CommandContext(ctx, "/bin/bash", "-c", addEnv(cmdStr))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if len(out) == 0 {
@@ -56,6 +61,6 @@ func ExecuteShellCmdWithTimeout(cmdStr string, timeout int) (string, bool) {
 }
 
 func ExecuteShellCmdDaemon(cmdStr string) (*exec.Cmd, error) {
-	cmd := exec.Command("/bin/bash", "-c", cmdStr)
+	cmd := exec.Command("/bin/bash", "-c", addEnv(cmdStr))
 	return cmd, cmd.Start()
 }
