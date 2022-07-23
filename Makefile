@@ -17,7 +17,7 @@ tls-ubuntu:
 	rm -rf conf/cert.key conf/cert.pem
 	openssl req -new -newkey rsa:2048 -days 36500 -nodes -x509 -keyout ./conf/cert.key -out ./conf/cert.pem -extensions v3_req -config ./conf/openssl.cnf.ubuntu -subj "/C=CN/ST=HN/L=ZZ/O=Sugon/OU=HPC/CN=myclush.com"
 
-build:
+x64:
 	go build -o bin/${APP} cmd/client/*.go
 	go build -o bin/${APP}d cmd/server/*.go
 

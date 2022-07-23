@@ -18,3 +18,4 @@ bin/clusctl*
 conf/cert*
 build
 *.rpm
+main

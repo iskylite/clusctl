@@ -51,6 +51,9 @@ func newLocalWriterWrapper(ctx context.Context, data *pb.PutStreamReq, tmpDir st
 		return nil, err
 	}
 	fp := filepath.Join(data.Location, data.Name)
+	if !utils.IsDir(data.Location) {
+		fp = data.Location
+	}
 	r := new(LocalWriterWrapper)
 	r.node = data.GetNode()
 	var ok atomic.Value

@@ -18,7 +18,9 @@ func (p *putStreamServer) RunCmd(req *pb.CmdReq, stream pb.RpcService_RunCmdServ
 	token, _ := getAuthorityByContext(stream.Context())
 	perRPCCredentials := grpc.WithPerRPCCredentials(&authority{sshKey: token})
 	// init base args
+	log.Debug(req.Nodelist)
 	splitNodes := utils.SplitNodesByWidth(utils.ExpNodes(req.Nodelist), req.Width)
+	log.Debug(splitNodes)
 	repliesChannel := make(chan *pb.Reply)
 	// replies handle
 	var waitc sync.WaitGroup

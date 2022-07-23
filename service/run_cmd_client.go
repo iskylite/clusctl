@@ -49,6 +49,7 @@ func newRunCmdClientService(ctx context.Context, cmd, port string, nodes []strin
 	for i := 0; i < nodesNum; i++ {
 		node := nodes[i]
 		nodelist := utils.Merge(nodes[i+1 : nodesNum]...)
+		log.Debugf("node [%s] -> [%s]\n", node, nodelist)
 		req := &pb.CmdReq{Cmd: cmd, Node: node, Nodelist: nodelist, Port: port, Width: width, Daemon: daemon}
 		conn, stream, err = checkConn(ctx, node, req, grpcOptions, authority)
 		if err != nil {
